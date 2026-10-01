@@ -485,7 +485,6 @@ function drawEnemyFast(e){
  const r=e.r,t=elapsed;
  let dir=Math.round(Math.atan2(player.y-e.y,player.x-e.x)/.7853981634);dir=(dir%8+8)%8;
  const v=e.ai==="charger"&&e.st===1?1:0,s=getSpr(e.type,dir,v);
- ctx.drawImage(SHADOW,e.x-r*.95,e.y+r*.58,r*1.9,r*.64);
  const bob=Math.sin(t*6+e.ph)*1.5;let sx=1,sy=1;
  if(e.type==="grunt"){const q=Math.sin(t*7+e.ph)*.08;sx=1+q;sy=1-q}
  if(e.hit>0){sx*=1.14;sy*=.88}                       // 피격 찌그러짐
@@ -653,6 +652,7 @@ function drawShot(s){
   case"icelance":spr(PS.icelance,s.x,s.y,a);break;
   case"abszero":spr(PS.icelance,s.x,s.y,a,1.4);break;
   case"shard":spr(PS.crystal,s.x,s.y,a,.6);break;
+  case"swave":drawSwave(s);break;
  }
 }
 function drawX(o){
@@ -677,8 +677,7 @@ function drawX(o){
    break}
   case"met":{
    const p=1-o.delay/o.d0;
-   ctx.save();ctx.fillStyle=o.hostile?`rgba(255,20,20,${.12+.2*p})`:`rgba(255,80,50,${.08+.14*p})`;ctx.strokeStyle=o.hostile?`rgba(255,40,40,${.6+.4*p})`:`rgba(255,110,70,${.5+.4*p})`;ctx.lineWidth=2.5;ctx.setLineDash([8,7]);
-   ctx.beginPath();ctx.arc(o.x,o.y,o.aoe,0,7);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+   if(o.hostile)dangerZone(o.x,o.y,o.aoe,p);else allyZone(o.x,o.y,o.aoe,p);ctx.save();
    const fx_=o.x+(1-p)*260,fy=o.y-(1-p)*520;
    ctx.strokeStyle="rgba(255,150,60,.55)";ctx.lineWidth=8;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(fx_,fy);ctx.lineTo(fx_+(fx_-o.x)*.4,fy+(fy-o.y)*.4);ctx.stroke();
    glowOn(20,"#ff6a1e");ctx.fillStyle="#ff8a2a";ctx.beginPath();ctx.arc(fx_,fy,o.star?12:9,0,7);ctx.fill();ctx.fillStyle="#ffe58a";ctx.beginPath();ctx.arc(fx_,fy,o.star?6:4,0,7);ctx.fill();
@@ -716,7 +715,7 @@ function drawX(o){
    const p=o.life/o.max;ctx.save();ctx.globalCompositeOperation="lighter";ctx.globalAlpha=p*.6;ctx.fillStyle="#5ad8ff";ctx.fillRect(o.x-o.R*.45*p,o.y-700,o.R*.9*p,700);
    ctx.globalAlpha=p;ctx.fillStyle="#ffffff";ctx.fillRect(o.x-4*p,o.y-700,8*p,700);ctx.drawImage(glowSpr("rgba(140,230,255,.9)"),o.x-o.R,o.y-o.R*.6,o.R*2,o.R*1.2);ctx.restore();break}
   case"dyna":{ // 다이너마이트 (날아가는 중) + 착탄 예고
-   ctx.save();ctx.strokeStyle="rgba(255,90,40,.6)";ctx.setLineDash([6,5]);ctx.lineWidth=2;ctx.beginPath();ctx.arc(o.tx,o.ty,o.R,0,7);ctx.stroke();ctx.setLineDash([]);
+   allyZone(o.tx,o.ty,o.R,Math.min(1,o.f>0?o.f*1.6:0));ctx.save();
    ctx.translate(o.x,o.y);ctx.rotate(elapsed*14);ctx.fillStyle="#c8302e";ctx.fillRect(-7,-3,14,6);ctx.fillStyle="#f4f1e8";ctx.fillRect(-2,-3,1.5,6);ctx.fillRect(1,-3,1.5,6);
    ctx.fillStyle="#ffdd66";ctx.beginPath();ctx.arc(8,0,2+Math.random()*1.5,0,7);ctx.fill();ctx.restore();break}
   case"saw":{ // 적대 톱날: 예고선 → 회전 톱날
@@ -740,7 +739,7 @@ function drawParticles(onScr){
   const p=PART[i];if(!onScr(p.x,p.y,20))continue;
   ctx.globalAlpha=p.life/p.max;
   if(p.k===1){ctx.strokeStyle=p.c;ctx.lineWidth=p.r;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*.035,p.y-p.vy*.035);ctx.stroke()}
-  else if(p.k===2){ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r*(1.6-p.life/p.max*.6),0,7);ctx.fill()}
+  else if(p.k===2){ctx.fillStyle=p.c;const rr=p.r*(1.6-p.life/p.max*.6);if(pN>300)ctx.fillRect(p.x-rr*.85,p.y-rr*.85,rr*1.7,rr*1.7);else{ctx.beginPath();ctx.arc(p.x,p.y,rr,0,7);ctx.fill()}}
   else{ctx.fillStyle=p.c;ctx.fillRect(p.x-p.r,p.y-p.r,p.r*2,p.r*2)}
  }
  ctx.globalAlpha=1;
@@ -784,6 +783,7 @@ function draw(){
  drawRingWeapons();
  drawBeams();
  drawSpecials(false);
+ drawSwordFx();
  drawParticles(onScr);
  drawGlowFx();
  if(sep)fxEnd(fxa);
@@ -880,17 +880,24 @@ function collectLights(){
   else if(o.t==="tesla")addLight(o.x,o.y,o.pz?150:120);else if(o.t==="grav")addLight(o.x,o.y,o.R*1.3);else if(o.t==="saw"&&o.warn<=0)addLight(o.x,o.y,90);else if(o.t==="pillar")addLight(o.x,o.y,o.R*3);else if(o.t==="sigil")addLight(o.x,o.y,o.R*1.8);else if(o.t==="wave"&&o.delay<=0)addLight(o.x,o.y,o.r*1.4)}
  for(let i=0;i<shots.length&&lN<Q.lmax*.8;i+=2){const s=shots[i];addLight(s.x,s.y,s.enemy?60:75)}   // 탄 광원은 절반만
 }
+let lightF=0,LVX=0,LVY=0;const LM=10;   // LM: 조명 캔버스 가장자리 여백(저해상도 px)
 function drawLighting(){
  if(!Q.light)return;
- const lw=Math.ceil(W/LSC),lh=Math.ceil(H/LSC);
- if(!LC||LC.width!==lw||LC.height!==lh){LC=mkCanvas(lw,lh);LG=LC.getContext("2d")}
- collectLights();
+ const lw=Math.ceil(W/LSC)+LM*2,lh=Math.ceil(H/LSC)+LM*2;
  const L=STAGE_LOOK[selSt];
- LG.globalCompositeOperation="source-over";LG.clearRect(0,0,lw,lh);
- LG.fillStyle=`rgba(${L.amb},${L.dark})`;LG.fillRect(0,0,lw,lh);
- LG.globalCompositeOperation="destination-out";
- const zs=ZM/LSC;for(let i=0;i<lN;i++){const r=LR[i]*zs,x=(LX[i]-VX0)*zs,y=(LY[i]-VY0)*zs;LG.drawImage(LIGHT,x-r,y-r,r*2,r*2)}
- ctx.save();ctx.setTransform(D,0,0,D,0,0);ctx.imageSmoothingEnabled=true;ctx.drawImage(LC,0,0,W,H);ctx.restore();
+ let fresh=false;
+ if(!LC||LC.width!==lw||LC.height!==lh){LC=mkCanvas(lw,lh);LG=LC.getContext("2d");fresh=true}
+ // 광원이 많을 땐 조명 레이어를 2프레임에 1번만 다시 그림 (그 사이엔 카메라 이동만큼 밀어서 사용)
+ if(fresh||!(paused||!running)&&(++lightF&1)===0||lN<40||paused||!running){
+  collectLights();
+  LG.globalCompositeOperation="source-over";LG.clearRect(0,0,lw,lh);
+  LG.fillStyle=`rgba(${L.amb},${L.dark})`;LG.fillRect(0,0,lw,lh);
+  LG.globalCompositeOperation="destination-out";
+  const zs=ZM/LSC;for(let i=0;i<lN;i++){const r=LR[i]*zs,x=(LX[i]-VX0)*zs+LM,y=(LY[i]-VY0)*zs+LM;LG.drawImage(LIGHT,x-r,y-r,r*2,r*2)}
+  LVX=VX0;LVY=VY0;
+ }
+ const ox=(LVX-VX0)*ZM-LM*LSC,oy=(LVY-VY0)*ZM-LM*LSC;
+ ctx.save();ctx.setTransform(D,0,0,D,0,0);ctx.imageSmoothingEnabled=true;ctx.drawImage(LC,ox,oy,lw*LSC,lh*LSC);ctx.restore();
  if(L.em){ // 용암/독늪/별빛 강은 스스로 빛남: 청크별 저해상도 발광 마스크를 가산 합성 (청크당 drawImage 1회)
   ctx.save();ctx.globalCompositeOperation="lighter";ctx.imageSmoothingEnabled=true;ctx.globalAlpha=.3+.06*Math.sin(elapsed*2.2);
   for(const c of VIS)if(c.em)ctx.drawImage(c.em,1,1,LOWN,LOWN,c.x0,c.y0,CS,CS);ctx.restore();
@@ -913,9 +920,29 @@ function drawPickups(){
 }
 /* 바닥 효과: 돌진 예고선, 독구름, 폭발, 내려찍기 예고 */
 const HOSTILE_FX={spore:1,lava:1,eboom:1,slam:1};
+/* ── 공격 예고 표준 ──
+   적 공격(위험): 빨간 반투명 바닥 + 굵은 실선 테두리 + 시간이 지날수록 안쪽이 차오름 + 중앙 ⚠
+   내 공격(아군): 하늘색 얇은 점선(회전) + 작은 조준점, 빨간색 사용 안 함 */
+function dangerZone(x,y,R,p){
+ ctx.save();const pulse=.5+.5*Math.sin(elapsed*18);
+ ctx.fillStyle=`rgba(255,25,35,${.1+.1*p})`;ctx.beginPath();ctx.arc(x,y,R,0,7);ctx.fill();
+ ctx.fillStyle=`rgba(255,40,40,${.18+.22*p})`;ctx.beginPath();ctx.arc(x,y,Math.max(1,R*p),0,7);ctx.fill();
+ ctx.strokeStyle=`rgba(255,${40+60*pulse|0},${40+30*pulse|0},${.75+.25*p})`;ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(x,y,R,0,7);ctx.stroke();
+ if(R>26){ctx.fillStyle=`rgba(255,235,220,${.55+.45*pulse})`;ctx.font="900 "+Math.min(26,R*.35|0)+"px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("⚠",x,y)}
+ ctx.restore();
+}
+function allyZone(x,y,R,p){
+ ctx.save();ctx.strokeStyle=`rgba(120,225,255,${.45+.4*p})`;ctx.lineWidth=2;ctx.setLineDash([7,8]);ctx.lineDashOffset=-elapsed*40;
+ ctx.beginPath();ctx.arc(x,y,R,0,7);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle=`rgba(120,225,255,${.05+.07*p})`;ctx.beginPath();ctx.arc(x,y,R*p,0,7);ctx.fill();
+ ctx.strokeStyle="rgba(200,245,255,.8)";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-7,y);ctx.lineTo(x+7,y);ctx.moveTo(x,y-7);ctx.lineTo(x,y+7);ctx.stroke();
+ ctx.restore();
+}
 function drawGroundFx(hostile){
  if(hostile)for(const e of enemies)if(e.ai==="charger"&&e.st===1&&onScr(e.x,e.y,400)){
-  const a=.25+.35*(1-e.tm/.75);ctx.save();ctx.strokeStyle=`rgba(255,60,60,${a})`;ctx.lineWidth=e.r*1.3;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+e.dx*380,e.y+e.dy*380);ctx.stroke();ctx.restore();
+  const k=1-e.tm/.75,a=.25+.35*k;ctx.save();ctx.strokeStyle=`rgba(255,40,40,${a})`;ctx.lineWidth=e.r*1.3;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+e.dx*380,e.y+e.dy*380);ctx.stroke();
+  ctx.strokeStyle=`rgba(255,90,80,${.6+.4*k})`;ctx.lineWidth=2.5;ctx.stroke();
+  const hx=e.x+e.dx*380,hy=e.y+e.dy*380,an=Math.atan2(e.dy,e.dx);ctx.fillStyle=`rgba(255,70,60,${.6+.4*k})`;ctx.beginPath();ctx.moveTo(hx+Math.cos(an)*18,hy+Math.sin(an)*18);ctx.lineTo(hx+Math.cos(an+2.4)*16,hy+Math.sin(an+2.4)*16);ctx.lineTo(hx+Math.cos(an-2.4)*16,hy+Math.sin(an-2.4)*16);ctx.closePath();ctx.fill();ctx.restore();
  }
  for(const ef of effects){
   if(!HOSTILE_FX[ef.type]!==!hostile)continue;
@@ -945,7 +972,7 @@ function drawGroundFx(hostile){
    ctx.restore();
   }
   else if(ef.type==="eboom"){if(!onScr(ef.x,ef.y,ef.r))continue;const p=1-ef.life/ef.max;ctx.save();ctx.globalAlpha=(1-p)*.7;ctx.fillStyle="#ff4a3a";ctx.beginPath();ctx.arc(ef.x,ef.y,ef.r*(.4+.6*p),0,7);ctx.fill();ctx.strokeStyle="#ffd0c0";ctx.lineWidth=3;ctx.stroke();ctx.restore()}
-  else if(ef.type==="slam"){const p=1-ef.life/ef.max;ctx.save();ctx.fillStyle=`rgba(255,50,60,${.12+.12*p})`;ctx.strokeStyle=`rgba(255,90,90,${.6+.4*p})`;ctx.lineWidth=3;ctx.setLineDash([10,8]);ctx.beginPath();ctx.arc(ef.x,ef.y,ef.r,0,7);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=`rgba(255,60,60,${.3*p})`;ctx.beginPath();ctx.arc(ef.x,ef.y,ef.r*p,0,7);ctx.fill();ctx.restore()}
+  else if(ef.type==="slam"){dangerZone(ef.x,ef.y,ef.r,1-ef.life/ef.max)}
  }
 }
 /* 오라 무기 바닥 표시 (빙하 심장 / 역병의 안개 / 태풍의 눈) */
@@ -960,7 +987,14 @@ function drawAuras(){
 function drawShots(enemy){for(const s of shots)if(!s.enemy===!enemy&&onScr(s.x,s.y,40))drawShot(s)}
 /* 적: 일반 적은 캐시 스프라이트, 엘리트/보스/사수는 벡터 */
 let statusLite=false;
-function drawEnemies(){statusLite=qi>0&&enemies.length>250;for(const e of enemies)if(onScr(e.x,e.y,80)){if(FAST[e.type])drawEnemyFast(e);else drawEnemy(e)}}
+function drawEnemies(){
+ statusLite=qi>0&&enemies.length>250;
+ // 그림자 일괄 그리기: 적마다 drawImage 1회 → 전체 경로 1번 채우기 (그리기 호출 수 대폭 감소)
+ ctx.fillStyle="rgba(0,0,0,.36)";ctx.beginPath();
+ for(const e of enemies)if(FAST[e.type]&&onScr(e.x,e.y,80)){const r=e.r;ctx.moveTo(e.x+r*.95,e.y+r*.9);ctx.ellipse(e.x,e.y+r*.9,r*.95,r*.32,0,0,6.2832)}
+ ctx.fill();
+ for(const e of enemies)if(onScr(e.x,e.y,80)){if(FAST[e.type])drawEnemyFast(e);else drawEnemy(e)}
+}
 /* 적 위에 그리는 효과: 번개 / 연쇄 번개 / 전류 / 펄스 / 충격파 링 / 섬광 / 처형 베기 */
 function drawOverFx(){
  for(const ef of effects){

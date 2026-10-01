@@ -29,6 +29,8 @@
   <div class="btns"><button id="cont">∞ 무한 모드로 계속</button><button id="restart" class="alt">타이틀로</button></div></div></div>
  <div id="title" class="overlay"><div class="panel"></div></div>
  <div id="codeov" class="overlay"><div class="panel"></div></div>
+ <div id="notesov" class="overlay"><div class="panel"></div></div>
+ <div id="lbov" class="overlay"><div class="panel"></div></div>
  <div id="pause" class="overlay"><div class="panel wide"><h2 id="pauseTitle">⏸ 일시정지</h2><div id="ptabs" class="ptabs"></div><div id="pbody"></div>
   <div class="btns"><button id="resume">계속하기</button><button id="giveup" class="alt">포기하기</button></div></div></div>
 </div>
@@ -41,9 +43,10 @@
 <script src="js/enemies.js"></script>
 <script src="js/weapons.js"></script>
 <script src="js/gun.js"></script>
+<script src="js/sword.js"></script>
 <script src="js/renderer.js"></script>
 <script src="js/hero.js"></script>
 <script src="js/ui.js"></script>
-<script>"use strict";showTitle();draw();requestAnimationFrame(loop);</script>
+<script>"use strict";showTitle();maybeNotes();draw();requestAnimationFrame(loop);</script>
 </body>
 </html>

@@ -17,8 +17,8 @@ function addNum(x,y,t,c,crit){
  const n=NUM[nN++];n.x=x;n.y=y;n.vy=crit?-75:-48;n.life=n.max=crit?.8:.5;n.t=t;n.c=c;n.crit=crit;
 }
 function dnum(e,d,c,crit){
- if(!S.dmgNum||d<.5)return;
- if(qi===2&&!crit)return;          // 저사양: 치명타만 표시
+ if(S.dmgNum==="off"||d<.5)return;
+ if((S.dmgNum==="crit"||qi===2)&&!crit)return;          // 설정 '치명타만' / 저사양: 치명타만 표시
  addNum(e.x+rand(-6,6),e.y-e.r-4,crit?Math.round(d)+"!":""+Math.round(d),c||"#fff",!!crit);
 }
 function burst(x,y,n,c){for(let i=0;i<n;i++){const a=Math.random()*6.283,sp=rand(40,190);if(!spawnP(x,y,Math.cos(a)*sp,Math.sin(a)*sp,rand(.2,.6),rand(1,3),c||"#fff",0,3,0))break}}
@@ -408,7 +408,17 @@ function updateEffects(dt){
  }
 }
 /* 경험치 보석: 드롭 시 튀어나왔다가 흡수 */
+const GEM_MV=[0,3,9,30,1e9];   // 합쳐진 경험치량에 따른 보석 등급
+let gemMergeT=0;const GEMCELL=new Map();
+function mergeGems(){
+ GEMCELL.clear();
+ for(let i=gems.length-1;i>=0;i--){const g=gems[i];if(g.pulled||g.vx||g.vy)continue;
+  const k=((g.x/48)|0)*100003+((g.y/48)|0),h=GEMCELL.get(k);
+  if(!h){GEMCELL.set(k,g);continue}
+  h.val+=g.val;let t=h.t;while(t<4&&h.val>GEM_MV[t+1])t++;if(t>h.t){h.t=t;h.r=GR[t]}rm(gems,i)}
+}
 function updateGems(dt){
+ if(gems.length>120){gemMergeT-=dt;if(gemMergeT<=0){gemMergeT=.5;mergeGems()}}
  const pr=pickupRange(),pr2=pr*pr;
  for(let i=gems.length-1;i>=0;i--){
   const g=gems[i];

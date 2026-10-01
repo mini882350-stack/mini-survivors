@@ -26,7 +26,8 @@ const QL=[
  {n:"중간",pmax:450,nmax:80,fx:50,imp:35,glow:false,light:true,lmax:70,dec:40,dpr:1.5},
  {n:"낮음",pmax:180,nmax:40,fx:24,imp:14,glow:false,light:false,lmax:0,dec:16,dpr:1}
 ];
-const S=Object.assign({q:"auto",shake:1,dmgNum:true,fps:false,vol:1,mvol:.8,svol:1,hl:0,bgDim:0,bgm:"random",fxa:1},loadJSON("ms_settings",{}));
+const S=Object.assign({q:"auto",shake:1,dmgNum:"all",fps:false,vol:1,mvol:.8,svol:1,hl:0,bgDim:0,bgm:"random",fxa:1},loadJSON("ms_settings",{}));
+if(S.dmgNum===true)S.dmgNum="all";else if(S.dmgNum===false)S.dmgNum="off";   // 예전 켬/끔 설정 이전
 const TOUCH=matchMedia("(pointer:coarse)").matches||"ontouchstart"in window;   // 모바일/태블릿
 let qi=S.q==="auto"?(TOUCH?1:0):Math.min(2,Math.max(0,+S.q||0)),Q=QL[qi];
 let ZM=1;                                                                       // 화면 확대율: 작은 화면에서는 더 넓게 보이도록 축소
@@ -61,7 +62,9 @@ addEventListener("keydown",e=>{
   else if(running&&!paused)openPause(false);
  }
  if(running&&!paused&&/^Digit[1-4]$/.test(e.code)&&selCh==="gunslinger")useSkill(+e.code[5]-1);   // 총잡이 스킬
- if(running&&!paused&&e.code==="KeyE"&&selCh==="gunslinger")gunSwap();                         // 총잡이 총 교체
+ if(running&&!paused&&e.code==="KeyE"&&selCh==="gunslinger")gunSwap();
+ if(running&&!paused&&/^Digit[1-4]$/.test(e.code)&&selCh==="swordsman")useSwSkill(+e.code[5]-1);   // 검객 스킬
+ if(running&&!paused&&e.code==="KeyE"&&selCh==="swordsman")swUlt();                                // 검객 궁극기                         // 총잡이 총 교체
  if((e.code==="Space"||e.code==="ShiftLeft"||e.code==="ShiftRight")&&running){if(e.code==="Space")e.preventDefault();if(!paused)tryDash()}
  if(e.code==="Tab"){e.preventDefault();if($("pause").style.display==="flex")closePause();else if(running&&!paused)openPause(false,"stats")}
  if(paused&&(e.code==="KeyR"||e.code==="KeyX")){
@@ -69,7 +72,7 @@ addEventListener("keydown",e=>{
   if(lv||ch){const b=$(e.code==="KeyR"?(lv?"reroll":"rerollC"):(lv?"skipL":"skipC"));if(b&&b.style.display!=="none")b.click()}
  }
  if(paused&&"12345".includes(e.key)&&e.key){
-  const sel=$("levelup").style.display==="flex"?"#choices .choice":$("chest").style.display==="flex"?"#rewards .reward":null;
+  const sel=$("levelup").style.display==="flex"?"#choices .choice":$("chest").style.display==="flex"?"#rewards .choice":null;
   if(sel){const b=document.querySelectorAll(sel)[+e.key-1];if(b)b.click()}
  }
 });
@@ -123,6 +126,7 @@ function update(dt){
  updateSpawning(dt);     // enemies.js
  updateWeapons(dt);      // weapons.js
  updateGun(dt);          // gun.js — 총잡이 리볼버/스킬
+ updateSword(dt);updateSwordFx(dt);   // sword.js — 검객
  updateEffects(dt);      // effects.js
  updateEnemies(dt);      // enemies.js
  buildGrid();            // core.js — 이동이 끝난 적 위치로 공간 그리드 재구성
@@ -144,7 +148,7 @@ function reset(){
  weapons={};for(const k in defs)weapons[k]={...defs[k],cool:Math.random()*.3};
  passives={};for(const k in passiveDefs)passives[k]={...passiveDefs[k]};
  Object.assign(player,{x:0,y:0,r:16,speed:225*(1+c.sp),maxHp:100+c.hp+pl("hp")*10,aim:0,flash:0,face:1,moving:false,
-  sh:0,shT:2,dashT:0,dashCD:0,dvx:0,dvy:0,critT:0,trailT:0,healCap:0,rage:0,rageT:0,auraT:1,rolls:0,walk:0,mvs:0,atk:0,atkCD:0,invT:0,reviveQ:false,
+  sh:0,shT:2,dashT:0,dashCD:0,dvx:0,dvy:0,critT:0,trailT:0,healCap:0,rage:0,rageT:0,auraT:1,rolls:0,walk:0,mvs:0,atk:0,atkCD:0,invT:0,reviveQ:false,tal:{},talT:{},
   tokens:Math.min(4,Math.floor(pl("reroll")/5)),revives:pl("revive")>=20?2:pl("revive")>=10?1:0});player.hp=player.maxHp;
  for(const a of[enemies,shots,gems,effects,drops,xs,chestQueue,decals])a.length=0;
  pN=0;nN=0;
@@ -157,12 +161,13 @@ function reset(){
  if(chunkStage!==selSt){chunks.clear();chunkStage=selSt}      // 스테이지가 바뀌면 지형 캐시 새로 생성
  prewarmSprites();                                              // 스테이지별 적 색상 스프라이트
  nextElite=[75,40,35,30,28,25][selSt];nextBoss=[170,110,100,90,85,80][selSt];
- E.vig.className=["","s2","s3","s4","s5","s6"][selSt];document.body.classList.toggle("ranger",selCh==="ranger");document.body.classList.toggle("gunslinger",selCh==="gunslinger");
+ E.vig.className=["","s2","s3","s4","s5","s6"][selSt];document.body.classList.toggle("ranger",selCh==="ranger");document.body.classList.toggle("gunslinger",selCh==="gunslinger"||selCh==="swordsman");
  if(c.start)weaponUpgrade(c.start);
  if(selCh==="gunslinger")gunInit();else player.gun=null;
- $("hint").textContent=selCh==="gunslinger"?"WASD 이동 · 클릭 사격(누르고 있으면 연사) · E 총 교체 · 휠 스킬 선택 · 우클릭 스킬 사용 · Space 구르기+재장전 · Esc 메뉴":"WASD 이동 · 자동 공격 · 1~5 선택 · Space 구르기(레인저) · Esc 메뉴 · Tab 내 스탯 · M 음소거 · F3 FPS";
+ if(selCh==="swordsman")swInit();else player.sw=null;SWFX.length=0;SWX.length=0;
+ $("hint").textContent=selCh==="swordsman"?"WASD 이동 · 클릭 베기(누르고 있으면 연격) · Space 섬보(무적, 직전 회피 시 간파) · 휠 스킬 선택 · 우클릭 스킬 · E 궁극기 · Esc 메뉴":selCh==="gunslinger"?"WASD 이동 · 클릭 사격(누르고 있으면 연사) · E 총 교체 · 휠 스킬 선택 · 우클릭 스킬 사용 · Space 구르기+재장전 · Esc 메뉴":"WASD 이동 · 자동 공격 · 1~5 선택 · Space 구르기(레인저) · Esc 메뉴 · Tab 내 스탯 · M 음소거 · F3 FPS";
  canvas.style.cursor=selCh==="gunslinger"&&!TOUCH?"none":"";
- hideAll();running=true;paused=false;clearMove();E.boss._on=false;E.boss.style.display="none";
+ hideAll();running=true;paused=false;clearMove();if(selCh==="swordsman")swChooseStart();E.boss._on=false;E.boss.style.display="none";
  toast(mode===1?"∞ 무한 모드 · 얼마나 버틸 수 있을까?":"WASD로 이동 · 자동 공격");setTimeout(()=>toast(""),1800);
  updateUI();
 }

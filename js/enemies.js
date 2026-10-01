@@ -48,7 +48,7 @@ function spawnEnemy(){
    DMG[curW]: 출처별 누적 피해 (일시정지 메뉴 '무기별 데미지') */
 function dmgTo(e,d,quiet){
  if(e.phased)return 0;
- if(e.guarded)d*=.3;if(e.wardT>0)d*=.5;if(e.markT>0)d*=1.25;if(e.frozenT>0)d*=isJob("cryo")?1.95:1.5;
+ if(e.guarded)d*=.3;if(e.wardT>0)d*=.5;if(e.markT>0)d*=1.25;if(e.frozenT>0)d*=isJob("cryo")?(T("c_dmg")?2.4:1.95):1.5;
  if(e.curseT>0)e.curseAcc+=d;
  const real=Math.min(d,Math.max(0,e.hp));DMG[curW]=(DMG[curW]||0)+real;
  e.hp-=d;if(!quiet)e.hit=.09;return d;
@@ -74,19 +74,22 @@ const stunRes=e=>e.type==="boss"?.25:(e.elite||e.hv)?.5:1;
 function applyStatus(e,st,dm){
  const pot=statusPot();
  switch(st){
-  case"burn":e.burnT=3*pot;e.burnDps=Math.max(e.burnDps,dm*.3*pot*(isJob("pyro")?1.3:1));break;
+  case"burn":e.burnT=3*pot;e.burnDps=Math.max(e.burnDps,dm*.3*pot*(isJob("pyro")?(T("p_burn")?1.8:1.3):1));break;
   case"chill":e.chillT=2.5*pot;if(e.frozenT<=0&&++e.chillN>=5)freeze(e,1.2*pot);break;
   case"shock":e.shockT=3*pot;break;
-  case"poison":e.poisonT=Math.max(e.poisonT,4*pot);e.poisonDps=Math.max(e.poisonDps,dm*.35*pot);break;
+  case"poison":e.poisonT=Math.max(e.poisonT,4*pot);e.poisonDps=Math.max(e.poisonDps,dm*.35*pot*(T("pl_dps")?1.6:1));break;
   case"bleed":e.bleedT=4*pot;e.bleedN=Math.min(6,e.bleedN+1);e.bleedB=Math.max(e.bleedB,dm*.06*pot);break;
   case"mark":e.markT=4*pot;break;
   case"stun":e.stunT=Math.max(e.stunT,.7*pot*stunRes(e));break;
   case"curse":if(e.curseT<=0)e.curseAcc=0;e.curseT=5;e.curseK=Math.max(e.curseK,weapons.doom&&weapons.doom.level>0?.5:.35);break;
  }
+ // 원소술사 특전 '삼원소': 다른 원소 하나 추가 (재귀 방지)
+ if(T("m_tri")&&!runSt.triL&&(st==="burn"||st==="chill"||st==="shock"||st==="poison")&&Math.random()<.3){runSt.triL=1;const o=["burn","chill","shock","poison"].filter(x=>x!==st);applyStatus(e,o[Math.floor(Math.random()*3)],dm*.6);runSt.triL=0}
  react(e,st,dm);
 }
 function freeze(e,t){
  t*=e.type==="boss"?.25:(e.elite||e.hv)?.5:1;
+ if(T("c_fz"))t*=1.6;
  e.frozenT=Math.max(e.frozenT,t);e.chillN=0;e.chillT=0;
  if(impBudget>0){impBudget--;for(let i=0;i<5;i++){const a=Math.random()*6.283;spawnP(e.x,e.y,Math.cos(a)*rand(60,160),Math.sin(a)*rand(60,160),rand(.2,.4),rand(1.4,2.4),i&1?"#dff8ff":"#9fe8ff",1,6,0)}}
  sfx("freeze");
@@ -190,7 +193,9 @@ function react(e,st,dm){
  if(rs){curW="reson";let c=0;for(const q of query(e.x,e.y,180,QD)){if(c>=2)break;if(q===e||q.hp<=0||q.phased)continue;c++;const d=dmgTo(q,base*(.12*rs+.2));dnum(q,d,R.c,false);vfx({type:"zap",x:e.x,y:e.y,x2:q.x,y2:q.y,life:.2,max:.2,c:R.c})}}
  curW=pw;
  // 원소술사: 반응이 일어나면 모든 무기의 재사용 대기시간 감소
- if(isJob("mage")&&elapsed>runSt.mageT){runSt.mageT=elapsed+.25;for(const kk in weapons)if(weapons[kk].level>0)weapons[kk].cool-=.08}
+ if(isJob("mage")&&elapsed>runSt.mageT){runSt.mageT=elapsed+.25;const cd=T("m_rx")?.16:.08;for(const kk in weapons)if(weapons[kk].level>0)weapons[kk].cool-=cd}
+ if(T("m_nova")&&burstB>0&&Math.random()<.2){burstB--;const pw2=curW;curW="trait";const RR=90*areaMul();areaHit(e.x,e.y,RR,(30+level*5)*dmgMul()*rxMul(),R.c);curW=pw2;
+  vfx({type:"ring",x:e.x,y:e.y,r0:8,r1:RR,life:.3,max:.3,c:R.c,w:5})}
  sfx("rx_"+k);
  if(!(rxLabelT[k]>elapsed)){rxLabelT[k]=elapsed+.35;vfx({type:"txt",x:e.x,y:e.y-e.r-18,t:R.i+" "+R.n,life:.7,max:.7,c:R.c,sz:15})}
 }
@@ -235,15 +240,20 @@ function kill(e,quiet){
  if(!quiet){
   // 중독 사망 → 주변으로 독 전파 (역병 의사: +3명, 35% 독 폭발)
   if(e.poisonT>0){
-   const plague=isJob("plague");spreadPoison(e,plague?6:3,plague?160:130);
-   if(plague&&burstB>0&&Math.random()<.35){burstB--;const pw=curW;curW="trait";areaHit(e.x,e.y,75*areaMul(),Math.max(8,e.poisonDps*2.5),"#9fff6a","poison",e.poisonDps*2);curW=pw;
+   const plague=isJob("plague");spreadPoison(e,plague?(T("pl_sp")?12:6):3,plague?(T("pl_sp")?224:160):130);
+   if(plague&&burstB>0&&Math.random()<(T("pl_ex")?.7:.35)){burstB--;const pw=curW;curW="trait";areaHit(e.x,e.y,75*areaMul(),Math.max(8,e.poisonDps*2.5),"#9fff6a","poison",e.poisonDps*2);curW=pw;
     vfx({type:"ring",x:e.x,y:e.y,r0:8,r1:75*areaMul(),life:.3,max:.3,c:"rgba(150,255,90,.9)",w:4});addDecal("poison",e.x,e.y,34);sfx("poison")}
   }
   // 저주받은 채 사망 → 영혼 폭발
   if(e.curseT>0&&burstB>0){burstB--;const pw=curW;curW="st_curse";areaHit(e.x,e.y,85*areaMul(),Math.max(10,e.maxHp*.08*statusPot()),"#d890ff");curW=pw;
    vfx({type:"ring",x:e.x,y:e.y,r0:6,r1:85*areaMul(),life:.35,max:.35,c:"rgba(196,106,255,.9)",w:5});vfx({type:"light",x:e.x,y:e.y,r:170,life:.3,max:.3,c:"#c46aff"})}
   // 회복: 흡혈귀 / 흡혈의 이빨 / 불사조
-  let h=0;if(isJob("vamp"))h+=1;if(selCh==="gunslinger"&&ch2On())h+=.3;   // 총잡이 현상금 (챕터 2): 처치 시 HP +0.3
+  // 화염술사 '연소 폭발' / 빙결 마녀 '얼음 파편'
+  if(T("p_expl")&&e.burnT>0&&burstB>0&&Math.random()<.35){burstB--;const pw=curW;curW="trait";const RR=85*areaMul();areaHit(e.x,e.y,RR,Math.max(10,e.burnDps*3),"#ff9a4a","burn",Math.max(10,e.burnDps*3));curW=pw;
+   vfx({type:"ring",x:e.x,y:e.y,r0:8,r1:RR,life:.3,max:.3,c:"rgba(255,140,60,.95)",w:5})}
+  if(T("c_sh")&&e.frozenT>0&&burstB>0){burstB--;const pw=curW;curW="trait";const RR=90*areaMul();areaHit(e.x,e.y,RR,(30+level*5)*dmgMul(),"#dff8ff","chill",(30+level*5));curW=pw;
+   vfx({type:"ring",x:e.x,y:e.y,r0:8,r1:RR,life:.3,max:.3,c:"rgba(190,240,255,.95)",w:5})}
+  let h=0;if(isJob("vamp"))h+=T("v_heal")?2:1;if((selCh==="gunslinger"||selCh==="swordsman")&&ch2On())h+=.3;   // 총잡이 현상금 (챕터 2): 처치 시 HP +0.3
   h+=passives.fang.level*.4;if(e.burnT>0&&weapons.phoenix&&weapons.phoenix.level>0)h+=.6;
   if(h>0&&player.hp<player.maxHp)heal(h,true);
  }
@@ -253,14 +263,14 @@ function kill(e,quiet){
  if(e.type==="magma"&&!quiet)addLava(e.x,e.y,62,6,14*e.dmgS);
  if(e.elite&&!e.final)drops.push({x:e.x,y:e.y,type:"chest",r:14});
  else if(!quiet&&!e.elite){
-  const r=Math.random(),m=dropMul();
+  const r=Math.random(),m=dropMul()*(T("g_jack")?2:1);
   if(r<.035*m)drops.push({x:e.x,y:e.y,type:"heal",r:9});
   else if(r<.06*m)drops.push({x:e.x,y:e.y,type:"magnet",r:9});
   else if(r<(.06+BOMB_P)*m)drops.push({x:e.x,y:e.y,type:"bomb",r:12});
   else if(r<(.06+BOMB_P+CHEST_P)*m)drops.push({x:e.x,y:e.y,type:"chest",r:14});
  }
  if(!quiet){
-  addNum(e.x,e.y-12,"+"+Math.round(e.xp*xpMul()),"#9ff",false);
+  if(S.dmgNum==="all")addNum(e.x,e.y-12,"+"+Math.round(e.xp*xpMul()),"#9ff",false);
   sfx(e.elite?"bigkill":"kill");
  }
  if(e.final){ // 최종 보스: 슬로모션 연출 후 클리어

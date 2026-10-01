@@ -6,15 +6,16 @@ const player={x:0,y:0,r:16,speed:225,hp:100,maxHp:100,aim:0,flash:0,face:1,movin
 const pl=k=>save&&save.perks?save.perks[k]||0:0;
 const chr=()=>CH[selCh]||{};
 const isJob=k=>selCh===k;
-const dmgMul=()=>(1+passives.might.level*.15+pl("dmg")*.04)*(isJob("vamp")&&player.hp<player.maxHp*.5?1.3:1)*(1+player.rage*.012);
-const rateMul=()=>Math.max(.4,1-passives.haste.level*.12)*(1-player.rage*.008)*(1-pl("cd")*.015);   // 광전사: 분노당 공격속도 +0.8%
-const speed=()=>player.speed*(1+passives.boots.level*.12)*(1+pl("spd")*.02)*(player.slow||1);   // slow: 독 늪 / 포자 구름
+const T=k=>player.tal&&player.tal[k]?1:0;   // 직업 특전 보유 여부
+const dmgMul=()=>(1+passives.might.level*.15+pl("dmg")*.04)*(isJob("vamp")&&player.hp<player.maxHp*(T("v_low")?.7:.5)?(T("v_low")?1.5:1.3):1)*(1+player.rage*.012);
+const rateMul=()=>Math.max(.4,1-passives.haste.level*.12)*(1-player.rage*.008)*(1-pl("cd")*.015)*(T("m_cd")?.85:1)*(T("p_spd")&&player.moving?.85:1);   // 광전사: 분노당 공격속도 +0.8%
+const speed=()=>player.speed*(1+passives.boots.level*.12)*(1+pl("spd")*.02)*(1+.15*(T("r_spd")+T("p_spd")))*(player.slow||1);   // slow: 독 늪 / 포자 구름
 const pickupRange=()=>125*(1+passives.magnet.level*.25)*(1+pl("magnet")*.04);
-const armorMul=()=>Math.max(.3,1-passives.armor.level*.08-(weapons.aegis&&weapons.aegis.level>0?.15:0))*(isJob("berserker")?1.1:1)*(1-pl("armor")*.015)*(1-passives.thorns.level*.03);
-const critC=()=>CRIT_C+passives.eye.level*.05+(player.critT>0?.4:0)+(isJob("gambler")?.1:0)+pl("crit")*.006;   // 레인저: 구른 뒤 +40%
-const critM=()=>CRIT_M+passives.eye.level*.15+(player.gun?(player.gun.u.ghol||0)*.25:0);
-const statusPot=()=>1+passives.amp.level*.2;                   // 상태이상 피해·지속 배율
-const rxMul=()=>(1+passives.cata.level*.3)*(isJob("mage")?1.5:1);  // 원소술사: 반응 피해 +50%
+const armorMul=()=>Math.max(.3,1-passives.armor.level*.08-(weapons.aegis&&weapons.aegis.level>0?.15:0))*(isJob("berserker")?(T("b_arm")?.9:1.1):1)*(T("k_aura")?.85:1)*(T("c_arm")?.85:1)*(1-pl("armor")*.015)*(1-passives.thorns.level*.03);
+const critC=()=>CRIT_C+passives.eye.level*.05+(player.critT>0?.4:0)+(isJob("gambler")?.1:0)+T("g_crit")*.15+(player.sw?(player.sw.u.scrit||0)*.06:0)+pl("crit")*.006;   // 레인저: 구른 뒤 +40%
+const critM=()=>CRIT_M+passives.eye.level*.15+(player.sw?(player.sw.u.scrit||0)*.2:0)+T("g_crit")*.3+(player.critT>0&&T("r_crit")?.5:0)+(player.gun?(player.gun.u.ghol||0)*.25:0);
+const statusPot=()=>(1+passives.amp.level*.2)*(T("m_amp")?1.4:1);                   // 상태이상 피해·지속 배율
+const rxMul=()=>(1+passives.cata.level*.3)*(isJob("mage")?1.5:1)*(T("m_rx")?1.3:1);  // 원소술사: 반응 피해 +50%
 const rxCd=()=>.7*(1-passives.cata.level*.12);
 const xpMul=()=>XP_MUL*(1+pl("xp")*.05);
 const areaMul=()=>1+passives.area.level*.12+pl("area")*.015;                    // 확산의 룬
@@ -25,15 +26,18 @@ const pSlots=()=>{let n=0;for(const k in passives)if(passives[k].level>0)n++;ret
 function passiveUpgrade(k){const p=passives[k];p.level++;discover("p",k);if(k==="heart"){player.maxHp+=20;player.hp=Math.min(player.maxHp,player.hp+35)}sfx("upgrade")}
 function gainXP(n){xp+=n*xpMul();checkLevel()}
 /* 클리어 연출(pendingWin) 중에는 레벨업 창을 띄우지 않음 */
-function checkLevel(){if(paused||!running||pendingWin>0)return;if(xp>=need){xp-=need;need=Math.floor(need*1.4+8);level++;showLevelUp()}}
+function checkLevel(){if(paused||!running||pendingWin>0)return;if(xp>=need){xp-=need;need=Math.floor(need*1.4+8);level++;if(level%TAL_LV===0&&talPool().length)showTalent();else showLevelUp()}}
 /* 회복 (흡혈 등 초당 상한이 있는 회복은 capped=true) */
 function heal(n,capped){
  if(capped){if(player.healCap>=12)return;player.healCap+=n}
- player.hp=Math.min(player.maxHp,player.hp+n);
+ const over=player.hp+n-player.maxHp;player.hp=Math.min(player.maxHp,player.hp+n);
+ if(over>0&&T("v_over"))player.sh=Math.min(player.maxHp*.3,player.sh+over);   // 흡혈귀 특전: 초과 회복 → 보호막
 }
 function hurt(n){
+ if(running&&pendingWin<=0&&isSw()&&swPre())return;   // 검객: 간파 / 반격 자세 / 스킬 무적
  if(!running||pendingWin>0||player.dashT>0||player.invT>0)return;   // 구르는 중 / 부활 직후 무적
- let d=n*armorMul();
+ if(T("r_dodge")&&Math.random()<.2){if(hurtFxT<=0){hurtFxT=.25;vfx({type:"txt",x:player.x,y:player.y-30,t:"회피!",life:.4,max:.4,c:"#bfffbf"})}return}
+ let d=n*armorMul()*(isSw()?swArmor():1);
  if(player.sh>0){ // 성기사 보호막
   const a=Math.min(player.sh,d);player.sh-=a;d-=a;
   if(player.sh<=0){player.sh=0;holyNova()}
@@ -58,7 +62,7 @@ function revive(){
 /* ── 직업 기믹 ── */
 /* 성기사: 보호막이 깨지면 성광 폭발 (피해 + 약화) */
 function holyNova(){
- const R=170*areaMul(),dm=(40+level*6)*dmgMul(),pw=curW;curW="trait";
+ const R=170*areaMul()*(T("k_holy")?1.5:1),dm=(40+level*6)*dmgMul()*(T("k_holy")?3:1),pw=curW;curW="trait";
  for(const e of query(player.x,player.y,R,QD)){
   if(e.hp<=0)continue;const q=dist(e,player);if(q>=R+e.r)continue;
   const L=q||1;dmgTo(e,dm);dnum(e,dm,"#ffe58a",false);e.markT=5*statusPot();push(e,(e.x-player.x)/L,(e.y-player.y)/L,420);
@@ -72,12 +76,15 @@ function holyNova(){
 }
 /* 레인저: 무적 구르기 */
 /* 광전사: 처치 시 분노 */
-function addRage(){if(!isJob("berserker"))return;const was=player.rage|0;player.rage=Math.min(30,player.rage+1);player.rageT=3;if(was<30&&player.rage>=30){toast("🪓 분노 최대!");sfx("enrage")}}
+const rageMax=()=>T("b_cap")?50:30;
+function addRage(){if(!isJob("berserker"))return;const was=player.rage|0,mx=rageMax();if(T("b_heal")&&was>=20)heal(1,true);player.rage=Math.min(mx,player.rage+1);player.rageT=T("b_dur")?6:3;if(was<mx&&player.rage>=mx){toast("🪓 분노 최대!");sfx("enrage")}}
 function tryDash(){
  if(isJob("gunslinger")){gunRoll();return}
+ if(isJob("swordsman")){swDash();return}
  if(!isJob("ranger")||!running||paused||player.dashCD>0)return;
  const a=player.moving?player.aim:(player.face>0?0:Math.PI);
- player.dashT=.22;player.dashCD=2.5;player.critT=2.2;player.dvx=Math.cos(a);player.dvy=Math.sin(a);
+ player.dashT=.22;player.dashCD=T("r_cd")?1.5:2.5;player.critT=T("r_crit")?4:2.2;player.dvx=Math.cos(a);player.dvy=Math.sin(a);
+ if(T("r_knife")){const dm=(14+level*2.2)*dmgMul(),pw=curW;curW="trait";for(let i=0;i<12;i++){const b=i/12*6.2832;addShot({x:player.x,y:player.y,vx:Math.cos(b)*620,vy:Math.sin(b)*620,r:6,life:.55,damage:dm,kind:"knife",pierce:1})}curW=pw}
  sfx("dash_p");vfx({type:"ring",x:player.x,y:player.y,r0:8,r1:44,life:.25,max:.25,c:"rgba(170,255,170,.8)",w:3});
 }
 /* 플레이어 이동 (입력) + 직업 기믹 진행 */
@@ -96,16 +103,19 @@ function updatePlayer(dt){
  const rg=passives.regen.level*.5+pl("regen")*.06;if(rg&&player.hp<player.maxHp)player.hp=Math.min(player.maxHp,player.hp+rg*dt);
  if(player.invT>0)player.invT-=dt;
  // 성기사: 10초마다 보호막 충전
- if(isJob("knight")){player.shT-=dt;if(player.shT<=0){player.shT=10;const m=player.maxHp*.25;if(player.sh<m){player.sh=m;sfx("shield");vfx({type:"ring",x:player.x,y:player.y,r0:30,r1:18,life:.3,max:.3,c:"rgba(255,226,122,.9)",w:3})}}}
+ if(isJob("knight")){player.shT-=dt;if(player.shT<=0){player.shT=T("k_sh")?7:10;const m=player.maxHp*(T("k_sh")?.4:.25);
+  if(T("k_heal"))heal(player.maxHp*.1);if(T("k_ham"))talSmite(6,(60+level*8)*dmgMul(),"#ffe58a");
+  if(player.sh<m){player.sh=m;sfx("shield");vfx({type:"ring",x:player.x,y:player.y,r0:30,r1:18,life:.3,max:.3,c:"rgba(255,226,122,.9)",w:3})}}}
  // 광전사: 분노는 3초간 처치가 없으면 빠르게 식음
  if(player.rage>0){player.rageT-=dt;if(player.rageT<=0)player.rage=Math.max(0,player.rage-dt*12)}
+ updateTalents(dt);   // 직업 특전 (주기 효과)
  // 빙결 마녀: 1초마다 주변 적에게 냉기 (반응도 일으킴)
- if(isJob("cryo")){player.auraT-=dt;if(player.auraT<=0){player.auraT=1;const R=150*areaMul(),dm=(8+level*1.5)*dmgMul(),pw=curW;curW="trait";
+ if(isJob("cryo")){player.auraT-=dt;if(player.auraT<=0){player.auraT=T("c_r")?.6:1;const R=150*areaMul()*(T("c_r")?1.5:1),dm=(8+level*1.5)*dmgMul(),pw=curW;curW="trait";
   for(const e of query(player.x,player.y,R,QD)){if(e.hp<=0||e.phased||d2(e,player)>(R+e.r)**2)continue;dmgTo(e,dm*.4,true);applyStatus(e,"chill",dm)}
   curW=pw;vfx({type:"ring",x:player.x,y:player.y,r0:R*.6,r1:R,life:.4,max:.4,c:"rgba(170,230,255,.45)",w:3})}}
  // 화염술사: 움직이면 불꽃 발자국
  if(isJob("pyro")&&player.moving){player.trailT-=dt;if(player.trailT<=0){player.trailT=.2;
-  effects.push({type:"cloud",st:"burn",fire:true,x:player.x+rand(-4,4),y:player.y+10,life:2,max:2,radius:26*areaMul(),dps:(5+level*1.1)*dmgMul(),tk:0,dm:(9+level*1.4)*dmgMul(),w:"trait"})}}
+  const tb=T("p_trail")?2:1;effects.push({type:"cloud",st:"burn",fire:true,x:player.x+rand(-4,4),y:player.y+10,life:2*tb,max:2*tb,radius:26*areaMul()*tb,dps:(5+level*1.1)*dmgMul(),tk:0,dm:(9+level*1.4)*dmgMul(),w:"trait"})}}
 }
 /* 프레임 끝: 발먼지, 피격 번쩍임 감소 */
 function updatePlayerLate(dt){
@@ -115,4 +125,27 @@ function updatePlayerLate(dt){
  // 캐릭터 애니메이션: 걷기 위상 · 이동 정도(부드럽게) · 공격 모션
  player.mvs+=((player.moving?1:0)-player.mvs)*Math.min(1,dt*10);player.walk+=dt*11*player.mvs;
  player.atk=Math.max(0,player.atk-dt*5);player.atkCD-=dt;
+}
+
+/* ── 직업 특전 ── */
+/* 화면 안 적 n명에게 낙뢰 (성기사 심판의 망치) */
+function talSmite(n,dm,c){const pw=curW;curW="trait";
+ const list=enemies.filter(e=>e.hp>0&&!e.phased&&onScr(e.x,e.y,0));for(let i=0;i<n&&list.length;i++){const e=list.splice(Math.floor(Math.random()*list.length),1)[0];
+  hitE(e,dm,c,"holy",0,1);e.markT=Math.max(e.markT,4);vfx({type:"zap",x:e.x,y:e.y-260,x2:e.x,y2:e.y,life:.2,max:.2,c})}
+ curW=pw;if(n)sfx("lightning")}
+/* 주변 원형 오라: 상태이상 부여 */
+function talAura(R,st,dm,col){const pw=curW;curW="trait";
+ for(const e of query(player.x,player.y,R,QD)){if(e.hp<=0||e.phased||d2(e,player)>(R+e.r)**2)continue;applyStatus(e,st,dm)}
+ curW=pw;vfx({type:"ring",x:player.x,y:player.y,r0:R*.6,r1:R,life:.35,max:.35,c:col,w:3})}
+function updateTalents(dt){
+ if(!player.tal)return;const tt=player.talT||(player.talT={});
+ const tick=(k,p)=>{tt[k]=(tt[k]||0)-dt;if(tt[k]<=0){tt[k]=p;return true}return false};
+ if(T("p_aura")&&tick("p",1))talAura(120*areaMul(),"burn",(14+level*2)*dmgMul(),"rgba(255,140,60,.45)");
+ if(T("pl_aura")&&tick("pl",1))talAura(140*areaMul(),"poison",(12+level*2)*dmgMul(),"rgba(150,255,90,.4)");
+ if(T("pl_hp")&&player.hp<player.maxHp)player.hp=Math.min(player.maxHp,player.hp+2*dt);
+ if(T("v_bat")&&tick("v",4)){const pw=curW;curW="trait";const dm=(30+level*5)*dmgMul();
+  const near=query(player.x,player.y,320,QD).filter(e=>e.hp>0&&!e.phased).sort((a,b)=>d2(a,player)-d2(b,player)).slice(0,6);
+  for(const e of near){hitE(e,dm,"#ff5a7a","scythe",0,0);heal(1.5);vfx({type:"zap",x:player.x,y:player.y-6,x2:e.x,y2:e.y,life:.18,max:.18,c:"#ff5a7a"})}curW=pw;if(near.length)sfx("ui")}
+ if(T("b_quake")&&player.rage>=rageMax()&&tick("b",4)){const R=220*areaMul(),pw=curW;curW="trait";areaHit(player.x,player.y,R,(80+level*10)*dmgMul(),"#ffb070");curW=pw;
+  vfx({type:"ring",x:player.x,y:player.y,r0:20,r1:R,life:.4,max:.4,c:"rgba(255,150,80,.95)",w:8});shake=Math.max(shake,8);sfx("bomb")}
 }

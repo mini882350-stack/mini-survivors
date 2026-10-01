@@ -48,7 +48,8 @@ function ensureRune(pick,pool){
 }
 /* 선택지: 보유 중인 무기·패시브 강화가 더 자주 나오고, 최소 1개는 보장 */
 function choiceData(){
- if(isGun())return gunChoiceData();                 // 총잡이: 리볼버·스킬·스탯 위주 전용 선택지
+ if(isGun())return gunChoiceData();
+ if(isSw())return swChoiceData();                    // 검객: 검·스킬·스탯 전용 선택지                 // 총잡이: 리볼버·스킬·스탯 위주 전용 선택지
  let a=[];const combos=availableCombos();
  if(combos.length){const r=combos[0];a.push({icon:r.icon,title:r.name,tag:"★ 조합 무기",t:"combo",el:elTag(r.kind),desc:r.desc,stat:`피해 ${r.damage} · 수량 ${r.count} · ${weapons[r.a].name} 소모 → 무기 칸 +1`,fn:()=>addComboRecipe(r)})}
  const pool=[],nW=wSlots(),wOpen=nW<MAX_W,pOpen=pSlots()<MAX_P,newW=nW>=5?.45:nW>=3?.7:1;   // 무기가 많을수록 새 무기 비중 감소
@@ -69,7 +70,7 @@ function choiceData(){
  if(!a.length)a.push({icon:"❤️",title:"휴식",tag:"회복",t:"rest",desc:"모든 강화를 마쳤습니다. HP를 크게 회복합니다.",stat:"HP +50%",fn:()=>{player.hp=Math.min(player.maxHp,player.hp+player.maxHp*.5)}});
  return a;
 }
-const choiceN=()=>(passives.luck.level>=3?4:3)+(isJob("gambler")?1:0);   // 행운 부적 Lv.3+ / 도박사: 선택지 +1
+const choiceN=()=>(passives.luck.level>=3?4:3)+(isJob("gambler")?1:0)+T("g_ch");   // 행운 부적 Lv.3+ / 도박사: 선택지 +1
 /* 보유 무기 / 패시브 한눈에 보기 + 조합표 펼치기 (레벨업·보물상자 창) */
 let recOpen=false;
 /* 총잡이: 리볼버 강화 + 스킬 아이콘 */
@@ -79,11 +80,13 @@ function gunIcons(cls){const g=player.gun;let h="";
 function ownedStrip(){
  let w="",p="",nw=0,np=0;
  if(isGun()&&player.gun)w=gunIcons("oi");
+ if(isSw()&&player.sw)w=swIcons("oi");
  for(const k in weapons){const x=weapons[k];if(!(x.level>0))continue;if(defs[k])nw++;const st=elOf(x.kind);
   w+=`<span class="oi${defs[k]?"":" cb"}" title="${x.name} Lv.${x.level}${st?" · "+st.n:""}">${x.icon}<i>${x.level}</i></span>`}
  for(const k in passives){const x=passives[k];if(!(x.level>0))continue;np++;p+=`<span class="oi pa" title="${x.name} Lv.${x.level} — ${x.desc}">${x.icon}<i>${x.level}</i></span>`}
  const rx=activeRx(ownedElems());
- return `<div class="owned"><div><small>${isGun()?"🔫 리볼버 · 스킬":"무기 "+nw+"/"+MAX_W}</small>${w||'<span class="dim">없음</span>'}</div><div><small>패시브 ${np}/${MAX_P}</small>${p||'<span class="dim">없음</span>'}</div>${rx.length?`<div class="orx">${rx.map(k=>rxChip(k)).join("")}</div>`:""}
+ const tl=(TAL[selCh]||[]).filter(t=>T(t.k));
+ return `<div class="owned">${tl.length?`<div class="otal"><small>⭐ 특전</small>${tl.map(t=>`<span class="oi tl" title="${t.n} — ${t.d}">${t.i}</span>`).join("")}</div>`:""}<div><small>${isGun()?"🔫 총기 · 스킬":isSw()?"⚔️ 검 · 스킬":"무기 "+nw+"/"+MAX_W}</small>${w||'<span class="dim">없음</span>'}</div><div><small>패시브 ${np}/${MAX_P}</small>${p||'<span class="dim">없음</span>'}</div>${rx.length?`<div class="orx">${rx.map(k=>rxChip(k)).join("")}</div>`:""}
   <button class="rbtn" data-rec>📖 조합표 ${recOpen?"접기 ▲":"보기 ▼"}</button></div><div class="recbox"${recOpen?"":' style="display:none"'}>${miniRecipes()}</div>`;
 }
 /* 간단 조합표: 재료를 보유한 레시피 먼저, 조건 충족은 금색 */
@@ -104,18 +107,44 @@ function lvFx(){
  shake=Math.max(shake,4);
 }
 const gridCls=(el,n)=>{el.classList.toggle("g4",n===4);el.classList.toggle("g5",n>=5)};
+/* 선택지 카드 (레벨업·보물상자 공용) */
+function cardEl(x,onPick){
+ const b=document.createElement("div");b.className="choice t-"+x.t;
+ b.innerHTML=`<div class="icon">${x.icon}</div><b>${x.title}</b><span class="tag">${x.tag}</span>${x.el||""}<p>${x.desc}</p><div class="stat">${x.stat}</div>${x.rx||""}`;
+ b.onmouseenter=()=>sfx("ui");b.onclick=onPick;return b;
+}
 function showLevelUp(reroll){
  paused=true;clearPtr();const box=$("choices");box.innerHTML="";
- if(!reroll)player.rolls=isJob("gambler")?2:0;
+ if(!reroll)player.rolls=isJob("gambler")?(T("g_roll")?4:2):0;
  const list=choiceData();gridCls(box,list.length);$("ownedL").innerHTML=ownedStrip();
  for(const x of list){
-  const b=document.createElement("div");b.className="choice t-"+x.t;
-  b.innerHTML=`<div class="icon">${x.icon}</div><b>${x.title}</b><span class="tag">${x.tag}</span>${x.el||""}<p>${x.desc}</p><div class="stat">${x.stat}</div>${x.rx||""}`;
-  b.onmouseenter=()=>sfx("ui");
-  b.onclick=()=>{clearPtr();paused=false;$("levelup").style.display="none";x.fn();lvFx();updateUI();checkLevel()};box.appendChild(b);
+  box.appendChild(cardEl(x,()=>{clearPtr();paused=false;$("levelup").style.display="none";x.fn();lvFx();updateUI();checkLevel()}));
  }
  rollBtns($("reroll"),$("skipL"));
  if(!reroll){show("levelup");chord()}
+}
+/* ── 직업 특전 (Lv.10마다 3중 택1) ── */
+function talPool(){if(isSw()&&player.sw)return swTalPool();const L=TAL[selCh]||[];return L.filter(t=>!T(t.k))}
+function showTalent(){
+ paused=true;clearPtr();const lu=$("levelup"),box=$("choices");box.innerHTML="";lu.classList.add("talent");
+ const h=lu.querySelector("h2"),sub=lu.querySelector(".sub");h.textContent=`⭐ 직업 특전 — Lv.${level}`;sub.textContent=`${chr().i} ${chr().n} 전용 · 하나를 고르면 이번 판 동안 유지됩니다 · 숫자 키로 선택`;
+ // 총잡이: 가진 스킬의 특전을 우선
+ const pool=talPool().map(t=>({...t,w:t.sk?(player.gun&&player.gun.sk.some(s=>s.k===t.sk)?3:.4):1.5}));
+ const list=wpick(pool,3);gridCls(box,list.length);$("ownedL").innerHTML="";$("reroll").style.display="none";$("skipL").style.display="none";
+ for(const t of list){const b=document.createElement("div");b.className="choice t-combo tal";
+  const own=t.sk&&!(player.gun&&player.gun.sk.some(s=>s.k===t.sk));
+  b.innerHTML=`<div class="icon">${t.i}</div><b>${t.n}</b><span class="tag">⭐ 직업 특전</span><p>${t.d}</p>${own?`<div class="stat">⚠ ${GUN_SK[t.sk].n} 스킬 필요</div>`:""}`;
+  b.onmouseenter=()=>sfx("ui");
+  b.onclick=()=>{player.tal[t.k]=1;talApply(t.k);lu.classList.remove("talent");h.textContent="✨ 능력을 선택하세요";sub.textContent="원소가 다른 무기를 모으면 원소 반응이 일어납니다 · 숫자 키로 선택";$("skipL").style.display="";
+   toast(`⭐ 특전: ${t.i} ${t.n}`);sfx("upgrade");lvFx();showLevelUp()};box.appendChild(b)}
+ show("levelup");stinger("evo");
+}
+/* 선택 즉시 적용되는 특전 */
+function talApply(k){
+ if(isSw()&&player.sw)swTalApply(k);
+ if(k==="v_rev")player.revives++;
+ if(k==="pl_hp"){player.maxHp+=60;player.hp+=60}
+ if(k==="k_sh")player.shT=Math.min(player.shT,1);
 }
 /* ── 다시 뽑기 / 포기 ──
    rolls: 도박사가 레벨업마다 받는 무료 횟수 · tokens: 판 전체에서 쓰는 다시 뽑기 (영구 강화 + 포기로 획득)
@@ -132,28 +161,12 @@ $("skipL").onclick=()=>skipPick("levelup");
 $("rerollC").onclick=()=>{if(!useRoll())return;sfx("ui");openChest(true)};
 $("skipC").onclick=()=>skipPick("chest");
 function openChest(reroll){
- paused=true;clearPtr();const box=$("rewards");box.innerHTML="";const pool=[],opts=[],N=choiceN();
- // 조합 조건을 만족하면 보물상자에서도 조합 무기가 맨 앞에 등장
- const combos=availableCombos();
- if(combos.length){const r=combos[0];opts.push({icon:r.icon,title:"★ "+r.name,desc:`조합 무기! ${weapons[r.a].name} 소모 → 무기 칸 +1`,gold:true,fn:()=>addComboRecipe(r)})}
- for(const k in weapons){const w=weapons[k];
-  if(w.level>0&&!maxed(k))pool.push({w:4,icon:w.icon,title:`${w.name} Lv.${w.level} → ${w.level+1}`,desc:"무기 레벨 +1",fn:()=>weaponUpgrade(k)});
-  else if(defs[k]&&w.level===0&&!w.consumed&&wSlots()<MAX_W&&availW(k))pool.push({w:.8,icon:w.icon,title:w.name+" 획득",desc:"새 무기 (Lv.1)",fn:()=>weaponUpgrade(k)});
- }
- for(const k in passives){const q=passives[k];
-  const nd=runeNeed(k);
-  if(q.level<q.max&&(q.level>0||(pSlots()<MAX_P&&availP(k))))pool.push({w:nd===2?9:nd?4.5:q.level>0?3:1.1,need:nd,icon:q.icon,title:`${q.name} Lv.${q.level} → ${q.level+1}`,desc:q.desc,fn:()=>passiveUpgrade(k)});
- }
- const cp=wpick(pool,N-opts.length);if(N-opts.length>0)ensureRune(cp,pool);for(const o of cp.slice(0,Math.max(0,N-opts.length)))opts.push(o);
- if(isGun()){opts.length=0;for(const x of gunChoiceData())opts.push({icon:x.icon,title:x.title,desc:x.tag+" · "+x.desc,fn:x.fn,gold:x.t==="combo"})}
- $("ownedC").innerHTML=ownedStrip();
- while(opts.length<3)opts.push({icon:"✨",title:"신비한 축복",desc:"HP 35% 회복 + 경험치 35",fn:()=>{player.hp=Math.min(player.maxHp,player.hp+player.maxHp*.35);gainXP(35)}});
- gridCls(box,opts.length);
- for(const o of opts){
-  const b=document.createElement("div");b.className="reward"+(o.gold?" gold":"");b.innerHTML=`<div class="big">${o.icon}</div><b>${o.title}</b><span>${o.desc}</span>`;
-  b.onmouseenter=()=>sfx("ui");
-  b.onclick=()=>{clearPtr();paused=false;$("chest").style.display="none";o.fn();lvFx();sfx("chest");updateUI();checkLevel()};box.appendChild(b);
- }
+ paused=true;clearPtr();const box=$("rewards");box.innerHTML="";
+ // 레벨업과 같은 선택지·같은 카드 (조합 무기 우선, 보유 아이템 가중치, 원소/조합 힌트 동일)
+ const list=choiceData().filter(x=>x.t!=="rest");
+ while(list.length<3)list.push({icon:"✨",title:"신비한 축복",tag:"보물상자",t:"rest",desc:"HP 35% 회복 + 경험치 35",stat:"HP +35% · EXP +35",fn:()=>{player.hp=Math.min(player.maxHp,player.hp+player.maxHp*.35);gainXP(35)}});
+ $("ownedC").innerHTML=ownedStrip();gridCls(box,list.length);
+ for(const x of list)box.appendChild(cardEl(x,()=>{clearPtr();paused=false;$("chest").style.display="none";x.fn();lvFx();sfx("chest");updateUI();checkLevel()}));
  rollBtns($("rerollC"),$("skipC"));
  if(!reroll){show("chest");chord()}
 }
@@ -161,7 +174,7 @@ function openChest(reroll){
    골드는 '이번 판 누적 - 이미 지급한 양'만 지급 → 클리어 후 무한 모드로 이어가도 중복 지급 없음 */
 function endRun(win){
  if(win)runBonus+=300;
- const S_=STG[selSt],total=Math.floor((kills*.4+elapsed/6)*(1+pl("gold")*.06)*S_.g*(mode===1?1.2:1))+runBonus,g=Math.max(0,total-paidGold);paidGold=total;
+ const S_=STG[selSt],total=Math.floor((kills*.4+elapsed/6)*(1+pl("gold")*.06)*S_.g*(mode===1?1.2:1)*(player.tal&&player.tal.g_gold?1.5:1))+runBonus,g=Math.max(0,total-paidGold);paidGold=total;
  save.gold+=g;
  const inf=mode===1&&!win,prevInf=save.bestInf||0;
  if(inf)save.bestInf=Math.max(prevInf,Math.floor(elapsed));else save.best=Math.max(save.best||0,Math.floor(elapsed));
@@ -170,15 +183,18 @@ function endRun(win){
  let rxN=0;for(const k in runRx)rxN+=runRx[k];
  T.kills+=kills-runSt.cK;runSt.cK=kills;T.rx+=rxN-runSt.cRx;runSt.cRx=rxN;T.boss+=runSt.boss-runSt.cB;runSt.cB=runSt.boss;
  T.maxLv=Math.max(T.maxLv||0,level);if(selCh==="pyro"&&elapsed>=300)T.pyro5=true;
- if(win){save.cl[selSt]=(save.cl[selSt]||0)+1;if(selSt===0)save.clears=(save.clears||0)+1}
+ const chBefore=Object.keys(CH).filter(k=>CH[k].req&&!reqMet(CH[k].req));
+ if(win){save.cl[selSt]=(save.cl[selSt]||0)+1;if(selSt===0)save.clears=(save.clears||0)+1;save.cc=save.cc||{};const ck=selCh+"_"+selSt;save.cc[ck]=(save.cc[ck]||0)+1}
+ const newC=chBefore.filter(k=>reqMet(CH[k].req));for(const k of newC)if(!save.chars.includes(k))save.chars.push(k);
  const newW=before.filter(k=>unlocked(k)),newS=STG.map((s,i)=>!stBefore[i]&&stageOpen(i)?s.n:null).filter(Boolean);
- commit();
+ commit();lbSubmit(selSt,Math.floor(elapsed),kills,selCh);
  document.querySelector("#gameover h2").textContent=win?"🏆 STAGE CLEAR!":mode===1?"∞ 무한 모드 종료":"☠️ GAME OVER";
  const rx=Object.keys(runRx).sort((a,b)=>runRx[b]-runRx[a]).map(k=>rxChip(k," ×"+runRx[k])).join("");
  $("result").innerHTML=`<div class="res"><div><b>${fmt(elapsed)}</b><small>생존</small></div><div><b>${kills}</b><small>처치</small></div><div><b>${level}</b><small>레벨</small></div><div><b>💰${g}</b><small>획득 골드</small></div></div>
   ${rx?`<h3>이번 판 원소 반응</h3><div class="syn" style="justify-content:center">${rx}</div>`:""}
   ${inf?`<div class="rec">∞ 최고 기록 ${fmt(save.bestInf)}${Math.floor(elapsed)>prevInf?" · 🎉 신기록!":""}</div>`:""}
   ${win&&mode===0?`<div class="rec">계속 싸우면 무한 모드로 이어집니다 (골드 ×1.2)</div>`:""}
+  ${newC.length?`<div class="rec unlock">🔓 새 직업 해금: ${newC.map(k=>CH[k].i+" "+CH[k].n).join(" · ")}</div>`:""}
   ${newW.length?`<div class="rec unlock">🔓 새 무기 해금: ${newW.map(k=>defs[k].icon+" "+defs[k].name).join(" · ")}</div>`:""}
   ${newS.length?`<div class="rec unlock">🔓 새 스테이지 해금: ${newS.join(" · ")}</div>`:""}
   ${dmgTable(5)}`;
@@ -200,7 +216,8 @@ function updateUI(){
  else if(E.boss._on){E.boss._on=false;E.boss.style.display="none"}
  // 인벤토리 (HTML이 바뀔 때만 DOM 갱신)
  let h='<div class="srow">',n=0;
- if(isGun()&&player.gun){h+=gunIcons("slot").replace(/<i>/g,'<span class="lv">').replace(/<\/i>/g,"</span>")||'<div class="slot empty">🔫</div>'}
+ if(isSw()&&player.sw){h+=swIcons("slot").replace(/<i>/g,'<span class="lv">').replace(/<\/i>/g,"</span>")}
+ else if(isGun()&&player.gun){h+=gunIcons("slot").replace(/<i>/g,'<span class="lv">').replace(/<\/i>/g,"</span>")||'<div class="slot empty">🔫</div>'}
  else{for(const k in defs){const w=weapons[k];if(w&&w.level>0){n++;h+=slotHtml(w,"")}}
  for(;n<MAX_W;n++)h+='<div class="slot empty"></div>';}
  h+='</div>';
@@ -229,7 +246,7 @@ const pct=v=>v?Math.round(v*100)+"%":"끔";
 const SETS=[
  ["그래픽 품질","q",["auto","0","1","2"],v=>v==="auto"?`자동 (현재 ${Q.n})`:QL[+v].n],
  ["화면 흔들림","shake",[1,.5,0],pct],
- ["데미지 숫자","dmgNum",[true,false],v=>v?"켬":"끔"],
+ ["데미지 숫자","dmgNum",["all","crit","off"],v=>({all:"모두 표시",crit:"치명타만",off:"끄기"})[v]||"모두 표시"],
  ["이펙트 투명도 (내 공격)","fxa",[1,.7,.45,.2],v=>v>=1?"불투명":v>=.7?"약간 투명 70%":v>=.45?"반투명 45%":"거의 투명 20%"],
  ["적 외곽선 강조","hl",[0,1,2,3],v=>["끔","흰색","빨강","노랑"][v]],
  ["배경 어둡게 (적 구분)","bgDim",[0,.2,.4],v=>v?(v<.3?"약하게":"강하게"):"끔"],
@@ -252,7 +269,7 @@ function tabStats(){
   ["드롭률","×"+dropMul().toFixed(1)],["초당 재생",(passives.regen.level*.5).toFixed(1)],["다시 뽑기",rollsLeft()+"회"],["부활",player.revives+"회"],["처치",kills],["생존 시간",fmt(elapsed)]];
  let h=`<h3>${c.i} ${c.n} · Lv.${level} · ${MODES[mode].n} · ${STG[selSt].n}</h3><div class="trait">★ ${c.trait} — ${c.d}</div><div class="sgrid">${rows.map(r=>`<div><small>${r[0]}</small><b>${r[1]}</b></div>`).join("")}</div>`;
  h+=`<h3>무기별 피해</h3>${dmgTable(99)}`;
- if(isGun()&&player.gun)h+=`<h3>🔫 리볼버</h3><div class="sgrid">${[["1발 피해",Math.round(gunDmg())],["발사 간격",gunInt().toFixed(2)+"초"],["장탄",gunCyl()+"발"],["재장전",gunRel().toFixed(2)+"초"],["관통",gu("gpier")],["동시 탄환",1+gu("gspr")],["치명타 피해","×"+critM().toFixed(2)],["스킬",player.gun.sk.map((s,i)=>(i+1)+":"+GUN_SK[s.k].i).join(" ")||"-"]].map(r=>`<div><small>${r[0]}</small><b>${r[1]}</b></div>`).join("")}</div>`;
+ if(isGun()&&player.gun)h+=`<h3>${GW().i} 총기 — 현재 ${GW().n}</h3><div class="sgrid">${[["1발 피해",Math.round(gunDmg())],["발사 간격",gunInt().toFixed(2)+"초"],["장탄",gunCyl()+"발"],["재장전",gunRel().toFixed(2)+"초"],["관통",gu("gpier")],["동시 탄환",1+gu("gspr")],["치명타 피해","×"+critM().toFixed(2)],["스킬",player.gun.sk.map((s,i)=>(i+1)+":"+GUN_SK[s.k].i).join(" ")||"-"]].map(r=>`<div><small>${r[0]}</small><b>${r[1]}</b></div>`).join("")}</div>`;
  h+=`<h3>무기</h3><table class="wt"><tr><th>무기</th><th>Lv</th><th>원소</th><th>1회 피해</th><th>수량</th><th>공격 간격</th></tr>`;
  for(const k in weapons){const w=weapons[k];if(!(w.level>0))continue;const st=elOf(w.kind);
   h+=`<tr><td>${w.icon} ${w.name}${defs[k]?"":" ★"}</td><td>${w.level}</td><td>${st?`<span style="color:${st.c}">${st.i} ${st.n}</span>`:"-"}</td><td>${Math.round(w.damage*dmgMul())}</td><td>${wc(w)}</td><td>${w.kind==="orbit"||w.kind==="aegis"?"상시 접촉":w.kind==="beam"||w.kind==="prism"?"상시 회전 · 같은 적 "+(w.rate*rateMul()).toFixed(2)+"초":(w.rate*rateMul()).toFixed(2)+"초"}</td></tr>`}
@@ -270,6 +287,9 @@ function srcName(k){
  if(k.startsWith("rx_")){const r=REACT[k.slice(3)];return r?`${r.i} ${r.n} <small>반응</small>`:k}
  if(k==="trait"){const c=chr();return `${c.i} ${c.trait} <small>직업</small>`}
  const p=passiveDefs[k];if(p)return `${p.icon} ${p.name} <small>패시브</small>`;
+ if(k.startsWith("ss_")){const s=SW_SK[k.slice(3)];return s?`${s.i} ${s.n} <small>스킬</small>`:k}
+ if(k.startsWith("su_")){const u=SW_ULT[{su_katana:"katana",su_sword:"sword",su_great:"great"}[k]];return u?`${u.i} ${u.n} <small>궁극기</small>`:k}
+ const SWN={sw_slash:"⚔️ 베기",sw_slash3:"⚔️ 3타 베기",sw_thrust:"⚡ 섬광 찌르기",sw_wave:"🌙 검기",sw_slam:"💥 지면 강타",sw_dual:"🌙 쌍도 추가 베기",sw_crush:"🌋 파쇄 충격파",sw_flame:"🔥 염검 폭발",sw_frost:"❄️ 얼음 파편",sw_rai:"⚡ 뇌절 연쇄",sw_ghost:"👥 잔상 베기"};if(SWN[k])return SWN[k];
  if(k==="revolver")return "🔫 리볼버";if(k==="fan")return "🔫 패닝 <small>우클릭</small>";if(k==="gun_exp")return "💥 폭발탄";if(k==="gun_sg")return "💥 산탄총";if(k==="gun_rf")return "🎯 장총";if(k==="gun_wave")return "🌠 레일 충격파";if(k==="gun_exe")return "🪓 처형탄";if(k==="gun_roll")return "🌀 구르기 폭발";
  if(k.startsWith("sk_")){const s=GUN_SK[k.slice(3)];return s?`${s.i} ${s.n} <small>스킬</small>`:k}
  return"기타";
@@ -362,8 +382,11 @@ function migrate(s){
  return s;
 }
 const stageOpen=i=>i===0||!!(save&&save.cl&&save.cl[i-1]>0);
+/* 직업 해금 조건 (save.cc: 직업_스테이지별 클리어 수) */
+const REQ_TXT={gs3:"총잡이로 🍄 독버섯 늪 클리어 시 해금"};
+function reqMet(r){const cc=save&&save.cc||{};if(r==="gs3")return (cc.gunslinger_3||0)>0;return true}
 function pickSlot(i){slot=i;save=migrate(mem[i]||{gold:0,chars:["mage"],perks:{},clears:0,best:0,v3:1});if(!CH[selCh])selCh="mage";commit();showTitle()}
-function pickCh(k){const c=CH[k];if(!save.chars.includes(k)){if(save.gold<c.cost)return;save.gold-=c.cost;save.chars.push(k);commit()}selCh=k;showTitle()}
+function pickCh(k){const c=CH[k];if(!save.chars.includes(k)){if(c.req&&!reqMet(c.req))return;if(save.gold<c.cost)return;save.gold-=c.cost;save.chars.push(k);commit()}selCh=k;showTitle()}
 function pickSt(i){if(!stageOpen(i))return;selSt=i;showTitle()}
 function buyPk(k){const lv=pl(k),c=pkCost(k,lv);if(lv>=PK_MAX||save.gold<c)return;save.gold-=c;save.perks[k]=lv+1;commit();showTitle()}
 function backSlots(){slot=-1;save=null;showTitle()}
@@ -371,11 +394,11 @@ function startRun(){if(!CH[selCh]||!save.chars.includes(selCh))selCh="mage";if(!
 function showTitle(){
  running=false;paused=false;hideAll();
  const el=$("title"),p=el.firstElementChild;el.style.display="flex";
- if(save){let ch=false;for(const k in CH)if(!CH[k].cost&&!save.chars.includes(k)){save.chars.push(k);ch=true}if(ch)commit()}
+ if(save){let ch=false;for(const k in CH)if(!CH[k].cost&&!save.chars.includes(k)&&(!CH[k].req||reqMet(CH[k].req))){save.chars.push(k);ch=true}if(ch)commit()}
  if(slot<0){
   p.innerHTML=`<h2>⚔️ MINI SURVIVORS</h2><div class="sub">저장 슬롯을 선택하세요</div><div class="choices">${[0,1,2].map(i=>{const s=mem[i];
    return `<div class="choice t-new" data-a="slot" data-k="${i}"><div class="icon">💾</div><b>슬롯 ${i+1}</b><p>${s?`💰 ${s.gold} · 클리어 ${s.cl?s.cl.reduce((a,b)=>a+b,0):s.clears||0}회<br>최고 생존 ${fmt(s.best||0)} · ∞ ${fmt(s.bestInf||0)}`:"비어 있음 — 새로 시작"}</p></div>`}).join("")}</div>
-   <div style="text-align:center"><button class="ghost" data-a="code">💾 저장 코드로 불러오기</button> <button class="ghost" data-a="set">⚙ 설정</button></div>`;
+   <div style="text-align:center"><button class="ghost" data-a="code">💾 저장 코드로 불러오기</button> <button class="ghost" data-a="lb">🏆 리더보드</button> <button class="ghost" data-a="notes">📜 패치 노트</button> <button class="ghost" data-a="set">⚙ 설정</button></div>`;
   return;
  }
  const dx=save.dex||{},got=Object.keys(dx.w||{}).length+Object.keys(dx.p||{}).length,tot=Object.keys(defs).length+comboRecipes.length+Object.keys(passiveDefs).length;
@@ -383,8 +406,8 @@ function showTitle(){
  const lockedW=Object.keys(UNLOCK).filter(k=>!unlocked(k));
  p.innerHTML=`<h2>⚔️ MINI SURVIVORS</h2><div class="sub">슬롯 ${slot+1} · 💰 ${save.gold} · 📖 도감 ${got}/${tot} · ∞ 최고 ${fmt(save.bestInf||0)}</div>
  ${ref?`<div class="rec unlock">🎁 직업 개편 보상: 사라진 직업 구매 골드 💰${ref} 환급</div>`:""}
- <h3>직업 — 각자 고유 기믹을 가지고 시작합니다</h3><div class="choices g3">${Object.keys(CH).map(k=>{const c=CH[k],own=save.chars.includes(k),src=portrait(k),w=defs[c.start]||{icon:"🔫",name:"리볼버 (전용)",kind:""},st=elOf(w.kind);
-  return `<div class="choice t-up${selCh===k?" sel":""}${own||save.gold>=c.cost?"":" lock"}" data-a="ch" data-k="${k}">${src?`<img class="por" src="${src}" alt="">`:`<div class="icon">${c.i}</div>`}<b>${c.n}</b><div class="trait">★ ${c.trait}</div><p>${c.d}<br><span class="sw">${w.icon} ${w.name}${st?` <span style="color:${st.c}">${st.i} ${st.n}</span>`:""}</span>${c.hp?` · HP ${c.hp>0?"+":""}${c.hp}`:""}${c.sp?` · 이속 ${c.sp>0?"+":""}${Math.round(c.sp*100)}%`:""}</p><div class="stat">${own?(selCh===k?"선택됨":"보유"):"🔒 해금 💰 "+c.cost}</div></div>`}).join("")}</div>
+ <h3>직업 — 각자 고유 기믹을 가지고 시작합니다</h3><div class="choices g3">${Object.keys(CH).map(k=>{const c=CH[k],own=save.chars.includes(k),src=portrait(k),w=defs[c.start]||(c.startLbl?{icon:"⚔️",name:c.startLbl,kind:""}:{icon:"🔫",name:"총기 3종 (전용)",kind:""}),st=elOf(w.kind),rq=c.req&&!reqMet(c.req);
+  return `<div class="choice t-up${selCh===k?" sel":""}${own||(!rq&&save.gold>=c.cost)?"":" lock"}" data-a="ch" data-k="${k}">${src?`<img class="por" src="${src}" alt="">`:`<div class="icon">${c.i}</div>`}<b>${c.n}</b><div class="trait">★ ${c.trait}</div><p>${c.d}<br><span class="sw">${w.icon} ${w.name}${st?` <span style="color:${st.c}">${st.i} ${st.n}</span>`:""}</span>${c.hp?` · HP ${c.hp>0?"+":""}${c.hp}`:""}${c.sp?` · 이속 ${c.sp>0?"+":""}${Math.round(c.sp*100)}%`:""}</p><div class="stat">${own?(selCh===k?"선택됨":"보유"):rq?"🔒 "+REQ_TXT[c.req]:"🔒 해금 💰 "+c.cost}</div></div>`}).join("")}</div>
  ${[1,2].map(chn=>`<h3>${chn===1?"스테이지 · 챕터 1":"🌌 챕터 2 — 새로운 적·무기·패시브 · 권장: 영구 강화 대부분 Lv.20"}</h3><div class="choices g3">${STG.map((s,i)=>{if((s.ch||1)!==chn)return"";const lk=!stageOpen(i);
   return `<div class="choice t-pas${chn===2?" ch2":""}${selSt===i?" sel":""}${lk?" lock":""}" data-a="st" data-k="${i}"><b>${s.n}</b><p>${lk?`🔒 ${STG[i-1].n} 클리어 시 해금`:s.d}</p>${save.cl[i]?`<div class="stat">클리어 ${save.cl[i]}회</div>`:""}</div>`}).join("")}</div>`).join("")}
  ${lockedW.length?`<div class="legend" style="text-align:center">🔒 잠긴 무기: ${lockedW.map(k=>`${defs[k].icon} ${defs[k].name} (${UNLOCK[k].d})`).join(" · ")}</div>`:""}
@@ -393,12 +416,12 @@ function showTitle(){
   return `<div class="pk${mx?" max":save.gold<c?" poor":""}" data-a="pk" data-k="${k}" title="${P.d}"><div class="pkh"><span class="ic">${P.i}</span><b>${P.n}</b><small>Lv.${lv}</small></div>
    <div class="pbar"><i style="width:${lv/PK_MAX*100}%"></i></div><p>${P.d}</p><div class="pkf"><span>현재 ${lv?P.v(lv):"-"}</span><em>${mx?"MAX":"💰 "+c}</em></div></div>`}).join("")}</div>
  <button class="go" data-a="go">▶ 출발</button>
- <div style="text-align:center"><button class="ghost" data-a="back">슬롯 변경</button> <button class="ghost" data-a="code">💾 저장 코드</button> <button class="ghost" data-a="dex">📖 도감 · 조합표</button> <button class="ghost" data-a="set">⚙ 설정</button></div>`;
+ <div style="text-align:center"><button class="ghost" data-a="back">슬롯 변경</button> <button class="ghost" data-a="code">💾 저장 코드</button> <button class="ghost" data-a="dex">📖 도감 · 조합표</button> <button class="ghost" data-a="lb">🏆 리더보드</button> <button class="ghost" data-a="notes">📜 패치 노트</button> <button class="ghost" data-a="set">⚙ 설정</button></div>`;
 }
 $("title").addEventListener("click",e=>{
  const t=e.target.closest("[data-a]");if(!t)return;const a=t.dataset.a,k=t.dataset.k;sfx("ui");
  if(a==="slot")pickSlot(+k);else if(a==="ch")pickCh(k);else if(a==="st")pickSt(+k);else if(a==="pk")buyPk(k);else if(a==="mode"){mode=+k;showTitle()}
- else if(a==="go")startRun();else if(a==="back")backSlots();else if(a==="set")openPause(true,"set");else if(a==="code")openCode();else if(a==="dex")openPause(true,"codex");
+ else if(a==="go")startRun();else if(a==="back")backSlots();else if(a==="set")openPause(true,"set");else if(a==="code")openCode();else if(a==="notes")showNotes();else if(a==="lb")openLB();else if(a==="dex")openPause(true,"codex");
 });
 $("restart").onclick=showTitle;
 /* ── 저장 코드: 슬롯 데이터를 문자열로 내보내 다른 기기·브라우저에서 불러오기 ──
@@ -443,4 +466,92 @@ $("codeov").addEventListener("click",async e=>{
   try{s=await readCode($("cdIn").value)}catch(err){msg.className="cdmsg bad";msg.textContent="⚠ "+(typeof err==="string"?err:"코드를 읽을 수 없습니다.");codeArm=false;return}
   if(mem[codeSlot]&&!codeArm){codeArm=true;msg.className="cdmsg warn";msg.textContent=`슬롯 ${codeSlot+1}에 기존 데이터가 있어요. 덮어쓰려면 한 번 더 누르세요 (💰 ${s.gold})`;return}
   mem[codeSlot]=s;slot=codeSlot;save=s;commit();$("codeov").style.display="none";showTitle();toast(`📥 슬롯 ${codeSlot+1}에 불러왔습니다 · 💰 ${s.gold}`)}
+});
+
+/* ── 패치 노트: 새 버전으로 처음 접속했을 때 1회 팝업 (타이틀의 📜 버튼으로 다시 보기) ── */
+const GAME_VER="7.8";
+const NOTES=[
+ {v:"7.8",t:"새 직업: 검객",items:[
+  "⚔️ <b>검객</b> 추가 — 총잡이로 🍄 독버섯 늪을 클리어하면 해금",
+  "마우스로 조준해 베는 근접 전투 · 누르고 있으면 3연격 콤보 · 판 시작 시 刀 도 / 劍 검 / 大 대검 중 선택",
+  "Space 섬보(무적 대시) — 공격이 닿기 직전에 피하면 '간파!' 시간 감속 + 반격 버프 · 반격 자세 · 회전 베기 · 일섬 등 무적기 다수",
+  "Lv.10 특전: 시작 무기가 3갈래 중 하나로 진화하고 궁극기(E) 해금 · Lv.20 특전: 궁극기 강화",
+  "궁극기: 도 '천섬' · 검 '만검귀종' · 대검 '대지 가르기' (공격으로 게이지 충전)"]},
+ {v:"7.7",t:"최적화 · 편의 개선 · 리더보드",items:[
+  "⚡ 최적화: 조명 레이어 갱신 절반으로, 적 그림자 한 번에 그리기, 가까운 경험치 보석 자동 합치기, 파티클이 많을 때 가벼운 모양 사용",
+  "🎁 보물상자 선택지가 레벨업과 같은 카드로 표시 (설명·수치·원소·조합 힌트 동일)",
+  "⚠ 공격 예고 구분: 적 공격은 빨간 바닥 + 굵은 테두리 + ⚠ 표시, 내 공격은 하늘색 점선 + 조준점",
+  "🔢 데미지 숫자 설정: 모두 표시 / 치명타만 / 끄기",
+  "🏆 온라인 리더보드: 스테이지별 최고 생존 시간 순위 (게시된 페이지에서 로그인 시)"]},
+ {v:"7.6",t:"직업 특전 · 패치 노트",items:[
+  "⭐ <b>직업 특전</b>: 모든 챕터에서 Lv.10마다 직업 전용 특전 3개 중 1개 선택 (레벨업 보상과 별도로 추가)",
+  "직업마다 특전 5~6종 — 예) 총잡이 '학살의 눈': 데드아이가 시야의 모든 적을 노리고 일반 적은 즉시 제거",
+  "총잡이: 가지고 있는 스킬의 특전이 더 잘 나옴 · 선택창 아래에 보유 특전 표시",
+  "📜 패치 노트 팝업 추가 (새 버전 첫 접속 시 1회)",
+  "총잡이 설명 정리: '리볼버 피해' → '총기 피해' 등 세 총 모두에 적용되는 강화로 표기"]},
+ {v:"7.5",t:"총잡이 챕터 2",items:["챕터 2 전용 총잡이 강화 4종 (공명탄 · 처형탄 · 레일 충격파 · 총잡이의 숙련)","챕터 2: 레벨당 총기 피해 +3%, 처치 시 HP 회복, 구르기 흙먼지 폭발","이동 중 캐릭터가 멈추는 현상 수정"]},
+ {v:"7.4",t:"저장 코드",items:["💾 저장 코드: 다른 기기·브라우저로 진행 상황 옮기기","선택지 후 혼자 한쪽으로 걸어가는 버그 수정","보스가 빨리 죽으면 체력바가 남는 현상 수정"]},
+ {v:"7.3",t:"룬 · 드롭 수정",items:["조합 재료 룬이 훨씬 잘 나오고, 무기 Lv.5면 짝 룬 보장","후반에 자석·회복 아이템이 드랍되지 않던 버그 수정"]}
+];
+function showNotes(){
+ const el=$("notesov"),p=el.firstElementChild;el.style.display="flex";
+ const [cur,...old]=NOTES;
+ p.innerHTML=`<h2>📜 패치 노트</h2><div class="sub">Mini Survivors v${cur.v} — ${cur.t}</div>
+  <ul class="nlist">${cur.items.map(x=>`<li>${x}</li>`).join("")}</ul>
+  <details class="nold"><summary>이전 업데이트</summary>${old.map(n=>`<h3>v${n.v} — ${n.t}</h3><ul class="nlist">${n.items.map(x=>`<li>${x}</li>`).join("")}</ul>`).join("")}</details>
+  <button class="go" data-n="ok">확인</button>`;
+}
+$("notesov").addEventListener("click",e=>{if(e.target.closest("[data-n]")||e.target.id==="notesov"){sfx("ui");$("notesov").style.display="none"}});
+function maybeNotes(){let seen=null;try{seen=localStorage.getItem("ms_ver")}catch(x){}
+ if(seen!==GAME_VER){showNotes();try{localStorage.setItem("ms_ver",GAME_VER)}catch(x){}}}
+
+/* ── 온라인 리더보드 ──
+   claude.ai에 게시된 페이지에서만 동작 (공유 DB). 스테이지별 '최고 생존 시간' 순위.
+   문서: lb/<내 id> = {nick, s0..s5 생존(초), k0..k5 처치, c0..c5 직업, t}
+   읽기: 로그인한 모든 방문자 · 쓰기: 자기 문서만 (게시자 / 조직 멤버 / 기여자 권한) */
+const LB={db:null,uid:null,canW:null,mine:null,ready:false,tab:0,busy:false};
+(async()=>{try{if(!window.claude||!window.claude.use)return;
+ const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);if(!db)return;LB.db=db;
+ if(user){LB.uid=await user.id();LB.canW=await user.can("data.write")}
+ if(LB.uid){try{const s=await db.doc("lb/"+LB.uid).get();if(s.exists)LB.mine={...s.data()}}catch(e){}}
+ LB.ready=true;if($("lbov").style.display==="flex")openLB();
+}catch(e){}})();
+const lbNick=()=>{let n="";try{n=localStorage.getItem("ms_nick")||""}catch(e){}return n||("총잡이"+(LB.uid?LB.uid.slice(-4):""))};
+const escH=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+async function lbWrite(body){
+ if(!LB.db||!LB.uid||LB.canW===false||LB.busy)return false;LB.busy=true;
+ try{await LB.db.doc("lb/"+LB.uid).set(body);LB.mine=body;return true}
+ catch(e){if(e&&e.code==="invalid_argument")LB.canW=false;return false}finally{LB.busy=false}
+}
+async function lbSubmit(st,sec,k,ch){
+ if(!LB.ready||!LB.uid||LB.canW===false||sec<30)return;
+ const m={...(LB.mine||{})};if((m["s"+st]||0)>sec||((m["s"+st]||0)===sec&&(m["k"+st]||0)>=k))return;   // 기록 갱신 때만
+ m["s"+st]=sec;m["k"+st]=k;m["c"+st]=ch;m.nick=lbNick();m.t=Date.now();
+ if(await lbWrite(m))toast(`🏆 리더보드 기록 갱신! ${STG[st].n} ${fmt(sec)}`);
+}
+async function openLB(){
+ hideAll();const el=$("lbov"),p=el.firstElementChild;el.style.display="flex";
+ const st=LB.tab;
+ const head=`<h2>🏆 리더보드</h2><div class="sub">스테이지별 최고 생존 시간 (일반·무한 모드 통합)</div>
+  <div class="lbtabs">${STG.map((s,i)=>`<button class="ghost${i===st?" on":""}" data-l="tab" data-k="${i}">${s.n}</button>`).join("")}</div>`;
+ const foot=`<div style="text-align:center"><button class="ghost" data-l="close">← 돌아가기</button></div>`;
+ if(!LB.db){p.innerHTML=head+`<div class="lbmsg">온라인 리더보드는 claude.ai에 게시된 페이지에서 로그인한 상태로 열었을 때만 동작합니다.</div>`+foot;return}
+ const nickRow=LB.canW===false?`<div class="lbmsg">이 링크에서는 순위 보기만 가능해요 (기록 등록은 게시자와 편집 권한이 있는 사람만).</div>`
+  :`<div class="cdrow" style="justify-content:center">닉네임 <input id="lbNick" maxlength="12" value="${escH(lbNick())}"> <button class="ghost" data-l="nick">저장</button><span id="lbNickMsg" class="cdmsg"></span></div>`;
+ p.innerHTML=head+nickRow+`<div id="lbList" class="lblist"><div class="lbmsg">불러오는 중…</div></div>`+foot;
+ try{
+  const snap=await LB.db.collection("lb").orderBy("s"+st,"desc").limit(30).get();
+  const rows=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r["s"+st]>0).slice(0,20);
+  if(LB.tab!==st||$("lbov").style.display!=="flex")return;
+  $("lbList").innerHTML=rows.length?`<table class="lbt"><tr><th>#</th><th>닉네임</th><th>직업</th><th>생존</th><th>처치</th></tr>${rows.map((r,i)=>{const c=CH[r["c"+st]];
+   return `<tr class="${r.id===LB.uid?"me":""}"><td>${i<3?["🥇","🥈","🥉"][i]:i+1}</td><td>${escH(String(r.nick||"익명").slice(0,12))}</td><td>${c?c.i+" "+c.n:"-"}</td><td>${fmt(r["s"+st]|0)}</td><td>${r["k"+st]|0}</td></tr>`}).join("")}</table>`
+   :`<div class="lbmsg">아직 기록이 없어요. 30초 이상 생존하면 자동으로 등록됩니다.</div>`;
+ }catch(e){$("lbList").innerHTML=`<div class="lbmsg">순위를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>`}
+}
+$("lbov").addEventListener("click",async e=>{
+ const t=e.target.closest("[data-l]");if(!t)return;const a=t.dataset.l;sfx("ui");
+ if(a==="close"){$("lbov").style.display="none";showTitle();return}
+ if(a==="tab"){LB.tab=+t.dataset.k;openLB();return}
+ if(a==="nick"){const v=($("lbNick").value||"").trim().slice(0,12);try{localStorage.setItem("ms_nick",v)}catch(x){}
+  const msg=$("lbNickMsg");if(LB.mine){const m={...LB.mine,nick:v||lbNick()};msg.textContent=(await lbWrite(m))?"✔ 저장됨":"저장 실패";if(LB.tab>=0)setTimeout(openLB,400)}else msg.textContent="✔ 다음 기록부터 적용"}
 });

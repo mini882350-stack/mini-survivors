@@ -269,6 +269,13 @@ function drawHeadgear(L,t,hy,mv){
    hGlow(1,hy-12,9,"rgba(160,230,255,.45)");
    for(const[x,h,w]of[[-4,6,1.8],[-1,9,2],[2.4,12,2.4],[5.6,8,2],[8,5,1.6]]){ctx.fillStyle=hVG(hy-8-h,hy-7,"#ffffff","#8fd8ff");ctx.beginPath();ctx.moveTo(x-w,hy-6.8);ctx.lineTo(x,hy-7-h);ctx.lineTo(x+w,hy-6.8);ctx.closePath();ctx.fill();hOut(.9)}
    ctx.fillStyle="#cfeeff";ctx.beginPath();ctx.ellipse(1.6,hy-6.6,7.8,1.8,-.05,0,7);ctx.fill();hOut(.9);hDot(2.4,hy-6.8,1.1,"#4ac8ff");break}
+  case"headband":{ // 검객 머리띠: 이마를 두른 띠 + 뒤로 휘날리는 두 가닥
+   const fl=Math.sin(t*9)*1.6*(.4+mv),fl2=Math.sin(t*9+1.2)*1.8*(.4+mv);
+   ctx.strokeStyle=L.band;ctx.lineWidth=2.2;ctx.lineCap="round";
+   ctx.beginPath();ctx.moveTo(-6.4,hy-2.6);ctx.quadraticCurveTo(-12-mv*3,hy-4+fl,-17-mv*5,hy-1+fl*1.4);ctx.stroke();
+   ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-6.4,hy-2);ctx.quadraticCurveTo(-11-mv*3,hy+1+fl2,-15-mv*4,hy+4+fl2*1.3);ctx.stroke();
+   ctx.fillStyle=L.band;ctx.beginPath();ctx.moveTo(-7.4,hy-5.6);ctx.quadraticCurveTo(1,hy-8.8,9.4,hy-4.6);ctx.lineTo(9.6,hy-2.2);ctx.quadraticCurveTo(1,hy-6.4,-7.6,hy-3.2);ctx.closePath();ctx.fill();hOut(.9);
+   ctx.fillStyle="#f4f0f4";ctx.fillRect(1.6,hy-7.6,2.4,2.2);break}
   case"cowboy":{ // 카우보이 모자: 양옆이 말려 올라간 챙 + 움푹한 크라운 + 띠
    ctx.fillStyle=hVG(hy-20,hy-6,shade(L.hat,.12),L.hat);ctx.beginPath();ctx.moveTo(-5.4,hy-6.6);ctx.quadraticCurveTo(-6.4,hy-17,-2,hy-18);ctx.quadraticCurveTo(1.4,hy-15.6,4,hy-18);ctx.quadraticCurveTo(8.6,hy-17.4,7.8,hy-6.6);ctx.closePath();ctx.fill();hOut(1.2);
    ctx.fillStyle=L.hat2;ctx.fillRect(-5.6,hy-9.4,13.4,2.4);ctx.fillStyle=L.trim;ctx.fillRect(-1,hy-9.2,2,2);
@@ -326,6 +333,26 @@ function drawItem(L,t,atk){
    for(const s of[-1,1]){ctx.beginPath();ctx.moveTo(0,-18.6);ctx.quadraticCurveTo(s*11,-22,s*10.6,-12);ctx.quadraticCurveTo(s*6,-14,0,-12.6);ctx.closePath();ctx.fill();hOut(1.2)}
    ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=.9;ctx.beginPath();ctx.moveTo(9.6,-19);ctx.quadraticCurveTo(10.6,-16,9.8,-13);ctx.stroke();
    ctx.fillStyle="#7a5a3e";ctx.fillRect(-1.6,-19.6,3.2,8);hOut(1);break}
+  case"blade":{
+   const sw_=running&&player.sw&&isSw()?player.sw:null,k=sw_?SWB[sw_.wp].k:"katana",col=sw_?swEvoC():"#cfe6ff";
+   if(!sw_)ctx.rotate(-Math.PI/2+.35);
+   if(k==="katana"){ // 도: 둥근 코등이 + 살짝 휜 긴 칼날
+    ctx.fillStyle="#2a2030";ctx.fillRect(-7,-1.3,7,2.6);ctx.fillStyle="#e8e4f0";for(let i=0;i<3;i++)ctx.fillRect(-6+i*2.2,-1.3,1,2.6);
+    hEll(.4,0,1.4,3.6,0,"#c8a040",true);
+    ctx.fillStyle=hVG(-2,2,"#ffffff","#a8b8cc");ctx.beginPath();ctx.moveTo(1.6,-1.3);ctx.quadraticCurveTo(14,-3.4,27,-4.4);ctx.lineTo(25,-2.4);ctx.quadraticCurveTo(14,-.4,1.6,1.1);ctx.closePath();ctx.fill();hOut(.9);
+    ctx.strokeStyle=col;ctx.globalAlpha=.7;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(3,-.4);ctx.quadraticCurveTo(14,-2.2,24,-3.2);ctx.stroke();ctx.globalAlpha=1}
+   else if(k==="sword"){ // 검: 십자 가드 + 곧은 양날
+    ctx.fillStyle="#4a2e1c";ctx.fillRect(-6,-1.3,6,2.6);hDot(-6.6,0,1.6,"#ffd36a",true);
+    ctx.fillStyle="#ffd36a";ctx.fillRect(-.6,-4.6,2.2,9.2);hOut(.9);
+    ctx.fillStyle=hVG(-2.4,2.4,"#ffffff","#9aa8c0");ctx.beginPath();ctx.moveTo(1.6,-2.2);ctx.lineTo(21,-2.2);ctx.lineTo(25,0);ctx.lineTo(21,2.2);ctx.lineTo(1.6,2.2);ctx.closePath();ctx.fill();hOut(1);
+    ctx.strokeStyle=col;ctx.globalAlpha=.8;ctx.lineWidth=.9;ctx.beginPath();ctx.moveTo(3,0);ctx.lineTo(21,0);ctx.stroke();ctx.globalAlpha=1}
+   else{ // 대검: 긴 손잡이 + 넓고 두꺼운 칼날
+    ctx.fillStyle="#3a2418";ctx.fillRect(-9,-1.5,9,3);hDot(-9.6,0,1.9,"#8a8e98",true);
+    ctx.fillStyle="#6a6e7a";ctx.fillRect(-.8,-6,3,12);hOut(1);
+    ctx.fillStyle=hVG(-4.6,4.6,"#f4f6fa","#7a8296");ctx.beginPath();ctx.moveTo(2.2,-4.4);ctx.lineTo(28,-4.6);ctx.lineTo(33,0);ctx.lineTo(28,4.6);ctx.lineTo(2.2,4.4);ctx.closePath();ctx.fill();hOut(1.2);
+    ctx.fillStyle=col;ctx.globalAlpha=.55;ctx.fillRect(5,-1,20,2);ctx.globalAlpha=1}
+   if(sw_&&(sw_.swing>0||sw_.ctr>0)){ctx.globalAlpha=.6;hGlow(16,0,14,col+"aa");ctx.globalAlpha=1}
+   break}
   case"revolver":{ // 총잡이 총 (+x 방향): 리볼버 / 산탄총 / 장총
    const k=-atk*2.5;ctx.translate(k,0);
    const wp=running&&player.gun&&isGun()?player.gun.wp:0;
@@ -371,7 +398,7 @@ function drawPlayer(){
  const bob=-Math.abs(Math.sin(player.walk||0))*1.8*(player.mvs||0);
  ctx.save();ctx.translate(player.x,player.y+bob);ctx.scale(f,1);
  if(player.flash>0&&(Math.floor(elapsed*30)&1))ctx.globalAlpha=.5;        // 피격 깜빡임
- const ga=player.gun?(f>0?player.gun.aim:Math.PI-player.gun.aim):undefined;   // 총잡이: 조준 각도(좌우 반전 고려)
+ const ga=player.gun?(f>0?player.gun.aim:Math.PI-player.gun.aim):player.sw&&isSw()?(f>0?player.sw.bladeA:Math.PI-player.sw.bladeA):undefined;   // 총잡이: 조준 각도(좌우 반전 고려)
  drawHero(chr().look||LOOK.mage,t,player.walk||0,player.mvs||0,player.atk||0,ga);
  ctx.restore();ctx.globalAlpha=1;
  drawPlayerFx();

@@ -34,7 +34,7 @@ const GUNS=[
 const GW=()=>GUNS[player.gun?player.gun.wp:0];
 /* 현상금 사냥꾼 (챕터 2): 플레이어 레벨당 총·스킬 피해 +3% */
 const bounty=()=>ch2On()?1+.03*(level-1):1;
-const gunBase=()=>32*(1+gu("gdmg")*.2)*(1+gu("gmast")*.12)*bounty()*dmgMul();   // 스킬 피해 기준
+const gunBase=()=>32*(1+gu("gdmg")*.2)*(1+gu("gmast")*.12)*bounty()*dmgMul()*(player.gun&&player.gun.rollBuff>0?1.5:1);   // 스킬 피해 기준
 const gunDmg=()=>gunBase()*GW().dm;
 const gunInt=()=>Math.max(.07,GW().it*(1-gu("grate")*.1)*rateMul()*(player.gun.stormT>0?.34:1));
 const gunCyl=()=>GW().cy+gu("gcyl")*GW().cyU;
@@ -49,7 +49,7 @@ function gunSwap(){
 /* Space: 무적 구르기 + 즉시 재장전 (재사용 3초) */
 function gunRoll(){
  const g=player.gun;if(!g||!running||paused||player.dashCD>0)return;
- const a=player.moving?player.aim:g.aim;player.dashT=.24;player.dashCD=3;player.dvx=Math.cos(a);player.dvy=Math.sin(a);
+ const a=player.moving?player.aim:g.aim;player.dashT=.24;player.dashCD=T("gs_roll")?1.5:3;if(T("gs_roll"))g.rollBuff=2;player.dvx=Math.cos(a);player.dvy=Math.sin(a);
  g.ammo=gunCyl();g.rl=0;g.fanQ=0;g.am=g.am.map((_,i)=>GUNS[i].cy+gu("gcyl")*GUNS[i].cyU);sfx("dash_p");sfx("reload");   // 구르면 세 총 모두 장전
  vfx({type:"ring",x:player.x,y:player.y,r0:8,r1:46,life:.25,max:.25,c:"rgba(255,220,150,.85)",w:3});
  // 챕터 2: 구르기 시작 지점에서 흙먼지 폭발 → 주변 적 밀쳐내기 + 피해 + 짧은 기절
@@ -71,7 +71,7 @@ function gunShoot(mul,spread,kind){
  if(g.emp>0)g.emp--;if(foc)g.focus--;
  curW=kind||W_.k==="rev"?(kind||"revolver"):"gun_"+W_.k;
  for(let i=0;i<n;i++){const a=sg?a0+rand(-W_.sp,W_.sp):a0+(i-(n-1)/2)*.11,v=W_.v*(sg?rand(.85,1.1):1),bx=player.x+Math.cos(a)*22,by=player.y-4+Math.sin(a)*22;
-  addShot({x:bx,y:by,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:foc?7:W_.k==="rf"?6:sg?4:5,life:W_.lf,damage:dm,kind:"revolver",pierce:W_.pi+gu("gpier")+(foc?3:0),gun:1,bnc:gu("gbnc"),foc,kb:W_.kb,rifle:W_.k==="rf"})}
+  addShot({x:bx,y:by,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:foc?7:W_.k==="rf"?6:sg?4:5,life:W_.lf,damage:dm,kind:"revolver",pierce:W_.pi+gu("gpier")+(foc?3:0),gun:1,bnc:gu("gbnc")+(g.stormT>0&&T("gs_storm")?2:0),foc,kb:W_.kb,rifle:W_.k==="rf"})}
  player.atk=1;player.atkCD=.1;g.flash=.06;
  const wv=gu("gwave");if(wv&&++g.wc%6===0)gunWave(dm*(3+1.5*wv)*(foc?1/(critM()*1.5):1));
  const mx=player.x+Math.cos(g.aim)*26,my=player.y-4+Math.sin(g.aim)*26;
@@ -116,11 +116,12 @@ function updateGun(dt){
  if(!isGun()||!player.gun)return;
  const g=player.gun,has=gunAim();
  if(Math.cos(g.aim)!==0&&(has||mouse.used))player.face=Math.cos(g.aim)>=0?1:-1;
- g.cd-=dt;g.flash-=dt;if(g.stormT>0)g.stormT-=dt;if(g.swapT>0)g.swapT-=dt;
+ g.cd-=dt;g.flash-=dt;if(g.rollBuff>0)g.rollBuff-=dt;if(g.stormT>0)g.stormT-=dt;if(g.swapT>0)g.swapT-=dt;
  for(const s of g.sk)if(s.cd>0)s.cd-=dt;
  // 데드아이: 조준 시간이 지나면 표적 전원에게 확정 치명타
  if(g.dead){g.dead.t-=dt;if(g.dead.t<=0){const lv=g.dead.lv,dm=gunBase()*(8+2*lv)*critM();curW="sk_deadeye";
-   for(const e of g.dead.list){if(e.hp<=0)continue;const d=dmgTo(e,dm);dnum(e,d,"#ff4a4a",true);impact(e.x,e.y,"revolver",e.x-player.x,e.y-player.y);
+   for(const e of g.dead.list){if(e.hp<=0)continue;let d;if(T("gs_dead")&&!e.elite){d=e.hp;DMG[curW]=(DMG[curW]||0)+d;e.hp=0;e.hit=.09}else d=dmgTo(e,dm);   // 학살의 눈: 일반 적 즉시 제거 (피해 감소 무시)
+   dnum(e,d,"#ff4a4a",true);impact(e.x,e.y,"revolver",e.x-player.x,e.y-player.y);
     vfx({type:"zap",x:player.x,y:player.y-4,x2:e.x,y2:e.y,life:.18,max:.18,c:"#fff2c0"})}
    g.dead=null;g.ammo=gunCyl();g.rl=0;shake=Math.max(shake,8);sfx("fan");kickR(5)}}
  // 재장전
@@ -128,31 +129,31 @@ function updateGun(dt){
  const inf=g.stormT>0;
  // 패닝: 남은 탄을 빠르게 난사
  if(fanReq){fanReq=false;if(g.ammo>0&&!g.fanQ){g.fanQ=g.ammo;g.fanT=0}}
- if(g.fanQ>0){g.fanT-=dt;if(g.fanT<=0){g.fanT=.045;g.fanQ--;if(!inf)g.ammo--;gunShoot(.9,.28,"fan");if(g.fanQ<=0||g.ammo<=0){g.fanQ=0;if(!inf){g.rl=gunRel();sfx("reload")}}}return}
+ if(g.fanQ>0){g.fanT-=dt;if(g.fanT<=0){g.fanT=.045;g.fanQ--;if(!inf&&!(T("gs_ammo")&&Math.random()<.5))g.ammo--;gunShoot(.9,.28,"fan");if(g.fanQ<=0||g.ammo<=0){g.fanQ=0;if(!inf){g.rl=gunRel();sfx("reload")}}}return}
  // 연사: 누르고 있으면 계속 (모바일/마우스 미사용 시 적이 있으면 자동)
  const want=mouse.used&&!TOUCH?mouse.down:has;
- if(want&&g.cd<=0&&has){g.cd=gunInt();if(!inf)g.ammo--;gunShoot(1,.03);if(g.ammo<=0){g.rl=gunRel();sfx("reload")}}
+ if(want&&g.cd<=0&&has){g.cd=gunInt();if(!inf&&!(T("gs_ammo")&&Math.random()<.5))g.ammo--;gunShoot(1,.03);if(g.ammo<=0){g.rl=gunRel();sfx("reload")}}
 }
 /* ── 스킬 ── */
-const skCd=s=>GUN_SK[s.k].cd*(1-.08*(s.lv-1))*(player.gun.stormT>0&&s.k!=="storm"?.5:1);
+const skCd=s=>GUN_SK[s.k].cd*(1-.08*(s.lv-1))*(player.gun.stormT>0&&s.k!=="storm"?.5:1)*(s.k==="dyna"&&T("gs_dyna")?.5:s.k==="judge"&&T("gs_judge")?.6:1);
 function useSkill(i){
  if(!isGun()||!running||paused)return;
  const g=player.gun,s=g.sk[i];if(!s||s.cd>0)return;
  gunAim();const lv=s.lv;s.cd=skCd(s);curW="sk_"+s.k;g.sel=i+1;
  switch(s.k){
   case"deadeye":{
-   const list=enemies.filter(e=>e.hp>0&&!e.phased&&onScr(e.x,e.y,0)).sort((a,b)=>b.maxHp-a.maxHp).slice(0,8+2*lv);
+   let list=enemies.filter(e=>e.hp>0&&!e.phased&&onScr(e.x,e.y,0)).sort((a,b)=>b.maxHp-a.maxHp);if(!T("gs_dead"))list=list.slice(0,8+2*lv);
    g.dead={t:.32,list,lv};slowT=.9;timeScale=.3;sfx("sigil_arm");toast("👁️ 데드아이");break}
   case"dyna":{
    const tx=mouse.used&&!TOUCH?mWX():player.x+Math.cos(g.aim)*220,ty=mouse.used&&!TOUCH?mWY():player.y+Math.sin(g.aim)*220;
-   const bd=gunBase(),R=(140+20*lv)*areaMul(),n=1+Math.floor(lv/2);   // Lv.2마다 묶음 +1개
+   const bd=gunBase(),R=(140+20*lv)*areaMul(),n=1+Math.floor(lv/2)+T("gs_dyna")*2;   // Lv.2마다 묶음 +1개
    for(let i=0;i<n;i++){const a=i*2.4,o=i?R*.55:0;addX({t:"dyna",x:player.x,y:player.y,x0:player.x,y0:player.y,tx:tx+Math.cos(a)*o,ty:ty+Math.sin(a)*o,f:-i*.08,R:i?R*.7:R,dm:bd*(6+1.2*lv)*(i?.6:1)})}
    sfx("mine");break}
   case"focus":g.focus=10+2*lv;g.ammo=gunCyl();g.rl=0;toast("🎯 정조준");sfx("sigil_arm");break;
-  case"storm":g.stormT=3+.5*lv;g.ammo=gunCyl();g.rl=0;toast("🔥 난사!");sfx("enrage");break;
+  case"storm":g.stormT=(3+.5*lv)*(T("gs_storm")?2:1);g.ammo=gunCyl();g.rl=0;toast("🔥 난사!");sfx("enrage");break;
   case"judge":{
-   const a=g.aim,L=1400,x2=player.x+Math.cos(a)*L,y2=player.y+Math.sin(a)*L,dm=gunBase()*(12+3*lv);
-   for(const e of enemies){if(e.hp<=0||e.phased)continue;if(seg(e.x,e.y,player.x,player.y,x2,y2)<e.r+40){hitE(e,dm,"#ffe58a","revolver",Math.cos(a),Math.sin(a));e.markT=Math.max(e.markT,6);e.stunT=Math.max(e.stunT,1*stunRes(e))}}
+   const a=g.aim,L=1400,x2=player.x+Math.cos(a)*L,y2=player.y+Math.sin(a)*L,dm=gunBase()*(12+3*lv),wd=T("gs_judge")?80:40;
+   for(const e of enemies){if(e.hp<=0||e.phased)continue;if(seg(e.x,e.y,player.x,player.y,x2,y2)<e.r+wd){hitE(e,dm*(T("gs_judge")&&e.type==="boss"?2:1),"#ffe58a","revolver",Math.cos(a),Math.sin(a));e.markT=Math.max(e.markT,6);e.stunT=Math.max(e.stunT,1*stunRes(e))}}
    addX({t:"rail",x:player.x,y:player.y-4,a,L,life:.4,max:.4,gold:1});kick(-Math.cos(a),-Math.sin(a),9);shake=Math.max(shake,8);stopHit(.05);sfx("fan");break}
  }
 }
@@ -162,7 +163,7 @@ function gunSkillAdd(k){player.gun.sk.push({k,lv:1,cd:0});toast(`${GUN_SK[k].i} 
 function gunChoiceData(){
  const pool=[],g=player.gun;
  for(const k in GUN_UP){const u=GUN_UP[k],lv=gu(k);if(lv>=u.max||(u.ch2&&!ch2On()))continue;
-  pool.push({w:u.ch2?(lv?4:3.4):lv?3.6:2.4,own:lv?1:0,icon:u.i,title:`${u.n} Lv.${lv+1}`,tag:u.ch2?"🌌 챕터 2 전용":"🔫 리볼버",t:lv?"up":"new",desc:u.d,stat:`현재 Lv.${lv} → ${lv+1} (최대 ${u.max})`,fn:()=>gunUpgrade(k)})}
+  pool.push({w:u.ch2?(lv?4:3.4):lv?3.6:2.4,own:lv?1:0,icon:u.i,title:`${u.n} Lv.${lv+1}`,tag:u.ch2?"🌌 챕터 2 전용":"🔫 총기 강화",t:lv?"up":"new",desc:u.d,stat:`현재 Lv.${lv} → ${lv+1} (최대 ${u.max})`,fn:()=>gunUpgrade(k)})}
  for(const k in GUN_SK){const s=g.sk.find(x=>x.k===k),S_=GUN_SK[k];
   if(s){if(s.lv<5)pool.push({w:3,own:1,icon:S_.i,title:`${S_.n} Lv.${s.lv+1}`,tag:`스킬 강화 · ${g.sk.indexOf(s)+1}번 키`,t:"combo",desc:S_.d,stat:`재사용 ${skCd({k,lv:s.lv+1}).toFixed(1)}초 · 위력 증가`,fn:()=>{s.lv++;sfx("upgrade")}})}
   else if(g.sk.length<4)pool.push({w:2.2,icon:S_.i,title:`${S_.n} NEW`,tag:`새 스킬 · ${g.sk.length+1}번 키`,t:"combo",desc:S_.d,stat:`재사용 ${S_.cd}초`,fn:()=>gunSkillAdd(k)})}
@@ -178,6 +179,7 @@ function gunChoiceData(){
 /* HUD 스킬 바 (0.1초마다, 바뀔 때만 DOM 갱신) */
 const SKB=$("skillbar");let skbCache="";
 function updateSkillBar(){
+ if(isSw()&&running)return swBar();
  if(!isGun()||!player.gun||!running){if(skbCache){skbCache="";SKB.innerHTML="";SKB.style.display="none"}return}
  const g=player.gun,rc=player.dashCD>0?Math.ceil(player.dashCD):0;
  let h=`<button class="skb wpn" data-swap="1"><span class="ic">${GW().i}</span><b>E</b><small>${GW().n}</small></button><div class="ammo">${g.rl>0?"🔄 장전 중":`${GW().i} ${g.stormT>0?"∞":g.ammo}/${gunCyl()}`}${g.focus>0?` · 🎯${g.focus}`:""} · 🌀${rc?rc+"s":"OK"}</div>`;

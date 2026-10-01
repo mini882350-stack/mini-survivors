@@ -72,7 +72,7 @@ button{border:0;color:#fff;font-family:inherit}
 .choice p{font-size:12px;opacity:.8;line-height:1.45;margin:9px 0}.stat{font-size:11px;color:#9feaff}
 .newrx{margin-top:6px;font-size:11px;font-weight:800;color:#ffe58a}
 #choices,#rewards{counter-reset:c}
-#choices .choice::before,#rewards .reward::before{counter-increment:c;content:counter(c);position:absolute;top:8px;right:10px;font:800 11px system-ui;opacity:.55;border:1px solid #fff4;border-radius:5px;padding:1px 6px}
+#choices .choice::before,#rewards .choice::before{counter-increment:c;content:counter(c);position:absolute;top:8px;right:10px;font:800 11px system-ui;opacity:.55;border:1px solid #fff4;border-radius:5px;padding:1px 6px}
 .chestTitle{font-size:34px;text-align:center}.chestSub{text-align:center;opacity:.7}
 .chestReward{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
 .reward{position:relative;padding:18px;border-radius:15px;background:#29344a;border:1px solid #ffffff20;text-align:center;cursor:pointer;animation:pop .28s cubic-bezier(.2,1.4,.4,1) backwards}
@@ -228,3 +228,30 @@ body.touch.gunslinger #mDash{display:grid!important}
 .cdslot.on{background:#5b7fff;color:#fff}
 #codeov .go.sm{padding:9px 20px;border-radius:10px;background:#5b7fff;font-weight:800;font-size:14px;cursor:pointer}
 .cdmsg{font-size:12px;color:#9fffb0}.cdmsg.bad{color:#ff8a8a}.cdmsg.warn{color:#ffd36a}
+
+/* 직업 특전 */
+#levelup.talent .panel{border-color:#ffd36a;box-shadow:0 30px 100px #000,0 0 60px #ffd36a33,inset 0 1px 0 #ffffff1a}
+#levelup.talent h2{color:#ffe58a;text-shadow:0 0 18px #ffb84a88}
+.choice.tal{border-color:#ffd36a99;background:linear-gradient(180deg,#3a2f14,#1c1a14)}
+.choice.tal .tag{background:#ffd36a;color:#2a1d00}
+.otal{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.oi.tl{border-color:#ffd36a;background:#3a2f14}
+
+/* 패치 노트 */
+#notesov{z-index:60}
+#notesov .panel{max-width:600px}
+.nlist{margin:10px 0 4px;padding-left:20px;line-height:1.65;font-size:14px}.nlist li{margin:3px 0}
+.nold{margin-top:12px;font-size:13px;opacity:.85}.nold summary{cursor:pointer;color:#ffd36a}
+#notesov .go{display:block;margin:16px auto 0;padding:11px 40px;border-radius:12px;background:#5b7fff;font-weight:800;font-size:15px;cursor:pointer}
+
+/* 리더보드 */
+#lbov .panel{max-width:640px}
+.lbtabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0}.lbtabs .ghost{margin-top:0}.lbtabs .on{background:#5b7fff;color:#fff}
+.lbmsg{text-align:center;opacity:.8;font-size:13px;margin:14px 0}
+.lbt{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 10px}.lbt th{font-size:12px;opacity:.6;text-align:left;padding:4px 6px}
+.lbt td{padding:6px;border-top:1px solid #ffffff14}.lbt tr.me td{background:#5b7fff22;color:#fff}
+#lbNick{padding:5px 8px;border-radius:8px;border:1px solid #ffffff33;background:#0b0f18;color:#fff;width:150px}
+
+/* 검객 */
+.icon.swk{font:900 46px "Noto Serif KR","Noto Serif CJK KR",serif;line-height:1;text-shadow:0 0 18px currentColor}
+.skb.ult{border-color:#ffd36a}.skb.ult.ready{animation:ultpulse 1s ease-in-out infinite;border-color:#fff2b0}
+@keyframes ultpulse{0%,100%{box-shadow:0 0 0 #ffd36a00}50%{box-shadow:0 0 18px #ffd36acc}}
