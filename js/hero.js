@@ -269,6 +269,11 @@ function drawHeadgear(L,t,hy,mv){
    hGlow(1,hy-12,9,"rgba(160,230,255,.45)");
    for(const[x,h,w]of[[-4,6,1.8],[-1,9,2],[2.4,12,2.4],[5.6,8,2],[8,5,1.6]]){ctx.fillStyle=hVG(hy-8-h,hy-7,"#ffffff","#8fd8ff");ctx.beginPath();ctx.moveTo(x-w,hy-6.8);ctx.lineTo(x,hy-7-h);ctx.lineTo(x+w,hy-6.8);ctx.closePath();ctx.fill();hOut(.9)}
    ctx.fillStyle="#cfeeff";ctx.beginPath();ctx.ellipse(1.6,hy-6.6,7.8,1.8,-.05,0,7);ctx.fill();hOut(.9);hDot(2.4,hy-6.8,1.1,"#4ac8ff");break}
+  case"startiara":{ // 별의 티아라: 금빛 테 + 가운데 큰 별 + 작은 별 두 개
+   ctx.strokeStyle=L.trim;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-6.6,hy-4.6);ctx.quadraticCurveTo(1,hy-9,9,hy-4.4);ctx.stroke();
+   const tw=.85+.15*Math.sin(t*5);hGlow(1.4,hy-10.5,7*tw,"rgba(255,230,140,.6)");
+   ctx.save();ctx.translate(1.4,hy-10.5);ctx.fillStyle="#ffe58a";ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,q=i%2?1.7:4.2*tw;ctx.lineTo(Math.cos(a)*q,Math.sin(a)*q)}ctx.closePath();ctx.fill();hOut(.8);ctx.restore();
+   hDot(-4,hy-7.4,1.1,"#fff4c8");hDot(6.8,hy-7.2,1.1,"#fff4c8");break}
   case"headband":{ // 검객 머리띠: 이마를 두른 띠 + 뒤로 휘날리는 두 가닥
    const fl=Math.sin(t*9)*1.6*(.4+mv),fl2=Math.sin(t*9+1.2)*1.8*(.4+mv);
    ctx.strokeStyle=L.band;ctx.lineWidth=2.2;ctx.lineCap="round";
@@ -333,6 +338,11 @@ function drawItem(L,t,atk){
    for(const s of[-1,1]){ctx.beginPath();ctx.moveTo(0,-18.6);ctx.quadraticCurveTo(s*11,-22,s*10.6,-12);ctx.quadraticCurveTo(s*6,-14,0,-12.6);ctx.closePath();ctx.fill();hOut(1.2)}
    ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=.9;ctx.beginPath();ctx.moveTo(9.6,-19);ctx.quadraticCurveTo(10.6,-16,9.8,-13);ctx.stroke();
    ctx.fillStyle="#7a5a3e";ctx.fillRect(-1.6,-19.6,3.2,8);hOut(1);break}
+  case"starstaff":{ // 별 부름 지팡이: 은빛 자루 + 초승달 고리 안의 빛나는 별
+   shaft(11,-18,"#d8dcf0",2);ctx.strokeStyle=L.trim;ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(0,-23,5.6,-.4,Math.PI+.4,true);ctx.stroke();
+   const tw=.9+.1*Math.sin(t*6)+atk*.5;hGlow(0,-23,10+atk*7,"rgba(200,170,255,.75)");
+   ctx.save();ctx.translate(0,-23);ctx.rotate(t*.8);ctx.fillStyle="#fff4c8";ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,q=i%2?1.6:3.8*tw;ctx.lineTo(Math.cos(a)*q,Math.sin(a)*q)}ctx.closePath();ctx.fill();hOut(.8);ctx.restore();
+   hDot(-2.6,-14,1,"#c8b8ff");hDot(2.6,-15,.9,"#ffe58a");break}
   case"blade":{
    const sw_=running&&player.sw&&isSw()?player.sw:null,k=sw_?SWB[sw_.wp].k:"katana",col=sw_?swEvoC():"#cfe6ff";
    if(!sw_)ctx.rotate(-Math.PI/2+.35);
@@ -384,6 +394,7 @@ function drawMotes(L,t,front){
   const x=Math.cos(a)*15,y=-2+Math.sin(a*1.3)*3+z*3,s=.8+z*.25;
   switch(L.mote){
    case"elem":hGlow(x,y,5*s,ELEM_C[i]+"99");hDot(x,y,1.6*s,ELEM_C[i]);break;
+   case"star":{const tw=.6+.4*Math.sin(t*7+i*2);hGlow(x,y-6,5*s*tw,i%2?"rgba(255,230,140,.7)":"rgba(200,170,255,.7)");ctx.fillStyle=i%2?"#ffe58a":"#efe4ff";ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4,q=k%2?.5:2.2*s*tw;ctx.lineTo(x+Math.cos(a)*q,y-6+Math.sin(a)*q)}ctx.closePath();ctx.fill();break}
    case"ember":{const yy=10-((t*14+i*9)%30);hDot(Math.sin(t*3+i*2)*9,yy,1.1*s,i%2?"#ffb040":"#ff5a1e");break}
    case"snow":{ctx.save();ctx.translate(x,y);ctx.rotate(t+i);ctx.strokeStyle="rgba(220,245,255,.9)";ctx.lineWidth=.8;for(let k=0;k<3;k++){ctx.rotate(1.047);ctx.beginPath();ctx.moveTo(-2*s,0);ctx.lineTo(2*s,0);ctx.stroke()}ctx.restore();break}
    case"bubble":{const yy=6-((t*8+i*7)%22);ctx.strokeStyle="rgba(160,255,120,.7)";ctx.lineWidth=.8;ctx.beginPath();ctx.arc(Math.sin(t*2+i*3)*10,yy,1.2+i*.3,0,7);ctx.stroke();break}

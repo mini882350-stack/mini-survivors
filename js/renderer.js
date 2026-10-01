@@ -524,7 +524,8 @@ function drawEnemy(e){ // 벡터 렌더링: 엘리트 / 보스 / 사수 (수가 
 /* 플레이어 주변 효과 · 체력바 (캐릭터 본체는 hero.js) */
 function drawPlayerFx(){
  // 성기사 보호막
- if(player.sh>0){const k=player.sh/(player.maxHp*.25);ctx.save();ctx.globalAlpha=.25+.45*k;ctx.strokeStyle="#ffe27a";ctx.lineWidth=2.5;ctx.fillStyle="rgba(255,226,122,.08)";
+ if(isSt())drawStShield();
+ if(player.sh>0&&!isSt()){const k=player.sh/(player.maxHp*.25);ctx.save();ctx.globalAlpha=.25+.45*k;ctx.strokeStyle="#ffe27a";ctx.lineWidth=2.5;ctx.fillStyle="rgba(255,226,122,.08)";
   ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3+elapsed*.6;ctx.lineTo(player.x+Math.cos(a)*27,player.y-3+Math.sin(a)*27)}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()}
  // 광전사: 분노 오라 / 빙결 마녀: 냉기 영역
  if(player.rage>0){const k=player.rage/30;ctx.save();ctx.globalAlpha=.15+.35*k;ctx.strokeStyle="#ff4a2a";ctx.lineWidth=2+k*3;ctx.beginPath();ctx.arc(player.x,player.y,24+Math.sin(elapsed*14)*2*k,0,7);ctx.stroke();ctx.restore();
@@ -632,7 +633,7 @@ const pulseCol={glacier:"#9be8ff",inferno:"#ff7a3a",plague:"#7be35a",flame:"#ff8
 const TRAIL={icelance:"#bff3ff",abszero:"#e8fbff",shard:"#bff3ff",orb:"#a67cff",knife:"#9fc8ff",crystal:"#9beaff",star:"#ffe27a",arcane:"#dc8cff",cannon:"#ff8a3c",fortress:"#ff8a3c"};
 function drawShot(s){
  const a=Math.atan2(s.vy,s.vx);
- if(s.enemy){if(s.fire)spr(PS.efire,s.x,s.y,0,1+.1*Math.sin(elapsed*20));else spr(PS.ebullet,s.x,s.y,a);return}
+ if(s.enemy){if(s.star){drawStarShot(s);return}if(s.fire)spr(PS.efire,s.x,s.y,0,1+.1*Math.sin(elapsed*20));else spr(PS.ebullet,s.x,s.y,a);return}
  const tr=TRAIL[s.kind];
  if(tr){ // 궤적: 속도에 비례한 꼬리 (위치 기록 없이 선 하나로)
   ctx.save();ctx.translate(s.x,s.y);ctx.rotate(a);ctx.globalAlpha=.35;ctx.strokeStyle=tr;ctx.lineWidth=s.r*1.1;ctx.lineCap="round";
@@ -653,6 +654,7 @@ function drawShot(s){
   case"abszero":spr(PS.icelance,s.x,s.y,a,1.4);break;
   case"shard":spr(PS.crystal,s.x,s.y,a,.6);break;
   case"swave":drawSwave(s);break;
+  case"stbolt":drawStbolt(s);break;
  }
 }
 function drawX(o){
@@ -784,6 +786,7 @@ function draw(){
  drawBeams();
  drawSpecials(false);
  drawSwordFx();
+ drawStelFx();
  drawParticles(onScr);
  drawGlowFx();
  if(sep)fxEnd(fxa);
@@ -791,6 +794,7 @@ function draw(){
  drawGroundFx(true);
  drawShots(true);
  drawSpecials(true);
+ drawStellaFx();
  drawPlayerGlow();
  drawFloatTexts();
  drawNums(onScr);
@@ -993,7 +997,7 @@ function drawEnemies(){
  ctx.fillStyle="rgba(0,0,0,.36)";ctx.beginPath();
  for(const e of enemies)if(FAST[e.type]&&onScr(e.x,e.y,80)){const r=e.r;ctx.moveTo(e.x+r*.95,e.y+r*.9);ctx.ellipse(e.x,e.y+r*.9,r*.95,r*.32,0,0,6.2832)}
  ctx.fill();
- for(const e of enemies)if(onScr(e.x,e.y,80)){if(FAST[e.type])drawEnemyFast(e);else drawEnemy(e)}
+ for(const e of enemies)if(onScr(e.x,e.y,80)){if(e.stella)drawStellaBoss(e);else if(FAST[e.type])drawEnemyFast(e);else drawEnemy(e)}
 }
 /* 적 위에 그리는 효과: 번개 / 연쇄 번개 / 전류 / 펄스 / 충격파 링 / 섬광 / 처형 베기 */
 function drawOverFx(){

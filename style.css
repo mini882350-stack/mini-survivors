@@ -243,13 +243,6 @@ body.touch.gunslinger #mDash{display:grid!important}
 .nold{margin-top:12px;font-size:13px;opacity:.85}.nold summary{cursor:pointer;color:#ffd36a}
 #notesov .go{display:block;margin:16px auto 0;padding:11px 40px;border-radius:12px;background:#5b7fff;font-weight:800;font-size:15px;cursor:pointer}
 
-/* 리더보드 */
-#lbov .panel{max-width:640px}
-.lbtabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0}.lbtabs .ghost{margin-top:0}.lbtabs .on{background:#5b7fff;color:#fff}
-.lbmsg{text-align:center;opacity:.8;font-size:13px;margin:14px 0}
-.lbt{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 10px}.lbt th{font-size:12px;opacity:.6;text-align:left;padding:4px 6px}
-.lbt td{padding:6px;border-top:1px solid #ffffff14}.lbt tr.me td{background:#5b7fff22;color:#fff}
-#lbNick{padding:5px 8px;border-radius:8px;border:1px solid #ffffff33;background:#0b0f18;color:#fff;width:150px}
 
 /* 검객 */
 .icon.swk{font:900 46px "Noto Serif KR","Noto Serif CJK KR",serif;line-height:1;text-shadow:0 0 18px currentColor}

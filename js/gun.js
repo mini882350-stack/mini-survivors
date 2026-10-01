@@ -180,6 +180,7 @@ function gunChoiceData(){
 const SKB=$("skillbar");let skbCache="";
 function updateSkillBar(){
  if(isSw()&&running)return swBar();
+ if(isSt()&&running)return stBar();
  if(!isGun()||!player.gun||!running){if(skbCache){skbCache="";SKB.innerHTML="";SKB.style.display="none"}return}
  const g=player.gun,rc=player.dashCD>0?Math.ceil(player.dashCD):0;
  let h=`<button class="skb wpn" data-swap="1"><span class="ic">${GW().i}</span><b>E</b><small>${GW().n}</small></button><div class="ammo">${g.rl>0?"🔄 장전 중":`${GW().i} ${g.stormT>0?"∞":g.ammo}/${gunCyl()}`}${g.focus>0?` · 🎯${g.focus}`:""} · 🌀${rc?rc+"s":"OK"}</div>`;

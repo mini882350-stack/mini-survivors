@@ -231,7 +231,7 @@ let lavaN=0;
 function addLava(x,y,r,life,dmg){if(lavaN>=40)return;lavaN++;effects.push({type:"lava",x,y,r,life,max:life,dmg})}
 function kill(e,quiet){
  kills++;
- if(e.final){pendingWin=1.6;chestQueue.length=0}             // 먼저 표시해 두어야 아래 경험치로 레벨업 창이 뜨지 않음
+ if(e.final){pendingWin=1.6;chestQueue.length=0;if(e.stella){runSt.stellaDown=true;STB.length=0;for(let i=shots.length-1;i>=0;i--)if(shots[i].enemy)shots.splice(i,1)}}             // 먼저 표시해 두어야 아래 경험치로 레벨업 창이 뜨지 않음
  if(e.type==="boss"){runSt.boss++;e.hp=Math.min(e.hp,0);updateUI()}   // 체력바 즉시 갱신 (레벨업 창이 바로 떠도 남지 않게)
  if(!quiet)addRage();
  if(!quiet)gainXP(e.xp);
@@ -253,7 +253,7 @@ function kill(e,quiet){
    vfx({type:"ring",x:e.x,y:e.y,r0:8,r1:RR,life:.3,max:.3,c:"rgba(255,140,60,.95)",w:5})}
   if(T("c_sh")&&e.frozenT>0&&burstB>0){burstB--;const pw=curW;curW="trait";const RR=90*areaMul();areaHit(e.x,e.y,RR,(30+level*5)*dmgMul(),"#dff8ff","chill",(30+level*5));curW=pw;
    vfx({type:"ring",x:e.x,y:e.y,r0:8,r1:RR,life:.3,max:.3,c:"rgba(190,240,255,.95)",w:5})}
-  let h=0;if(isJob("vamp"))h+=T("v_heal")?2:1;if((selCh==="gunslinger"||selCh==="swordsman")&&ch2On())h+=.3;   // 총잡이 현상금 (챕터 2): 처치 시 HP +0.3
+  let h=0;if(isJob("vamp"))h+=T("v_heal")?2:1;if((selCh==="gunslinger"||selCh==="swordsman"||selCh==="stella")&&ch2On())h+=.3;   // 총잡이 현상금 (챕터 2): 처치 시 HP +0.3
   h+=passives.fang.level*.4;if(e.burnT>0&&weapons.phoenix&&weapons.phoenix.level>0)h+=.6;
   if(h>0&&player.hp<player.maxHp)heal(h,true);
  }
@@ -285,6 +285,7 @@ function updateFinalBoss(){
   if(elapsed>=nextRush){nextRush=elapsed+180;bossRush()}
   return;
  }
+ if(elapsed>=600&&!finalSpawned&&selSt===5){finalSpawned=true;spawnStella();return}   // 별의 심연: 최종 보스 스텔라 (1:1)
  if(elapsed>=600&&!finalSpawned){
   finalSpawned=true;const b=makeEnemy("boss",player.x+420,player.y);
   b.final=true;b.r=48;b.xp=300;b.hp*=2.5;b.maxHp=b.hp;toast("👑 최종 보스 출현! 처치하면 클리어!");stinger("boss");shake=Math.max(shake,14);
@@ -299,12 +300,14 @@ function bossRush(){
 }
 /* 위협 단계 알림 + 적 스폰 */
 function updateSpawning(dt){
+ if(runSt.duel)return;                                   // 스텔라와 1:1 결투 중엔 적이 나오지 않음
  const nt=Math.floor(elapsed/120);if(nt>tier){tier=nt;toast(`⚠️ 적이 더 강해졌습니다! (위협 ${tier})`);sfx("warn")}
  spawn-=dt;
  if(spawn<=0){spawn=Math.max(.11,.72-elapsed*.0028);const n=elapsed>600?7:elapsed>480?6:elapsed>320?5:elapsed>200?4:elapsed>100?3:elapsed>45?2:1;if(enemies.length<450)for(let i=0;i<n;i++)spawnEnemy()}
 }
 /* ── 스테이지 위험 요소 (용암 협곡) ── 용암 강 위에 서 있으면 화상 · 주기적으로 적대 유성 낙하 */
 function updateHazards(dt){
+ if(runSt.duel)return;
  const hz=STAGE_LOOK[selSt].haz;if(!hz)return;
  const sc=STG[selSt].dmg*(1+elapsed/500);
  if(hz==="lava"||hz==="bog"){
@@ -373,6 +376,7 @@ function updateEnemies(dt){
      for(let i=0;i<n;i++){const a=o+i*6.283/n;shots.push({x:e.x,y:e.y,vx:Math.cos(a)*135,vy:Math.sin(a)*135,r:6,life:5,damage:16*e.dmgS,enemy:true})}sfx("warn")}}
     e.sm-=dt;if(e.sm<=0){e.sm=12;if(enemies.length<450)for(let i=0;i<4;i++){const a=i*Math.PI/2;makeEnemy(STG[selSt].ch===2?"spore":"grunt",e.x+Math.cos(a)*60,e.y+Math.sin(a)*60)}toast("👑 보스가 졸개를 소환했다!");vfx({type:"ring",x:e.x,y:e.y,r0:e.r,r1:e.r*3,life:.4,max:.4,c:"rgba(255,60,160,.8)",w:4})}
     break;
+   case"stella":{const v=stellaAI(e,dt,L,ux,uy);vx=v[0];vy=v[1];break}
    case"healer": // 주변 적 회복 (3초마다 최대 체력 8%)
     if(L<260){vx*=.3;vy*=.3}
     e.healT-=dt;if(e.healT<=0&&e.stunT<=0&&e.frozenT<=0){e.healT=3;let c=0;

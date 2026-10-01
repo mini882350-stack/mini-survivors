@@ -34,13 +34,15 @@ function heal(n,capped){
  if(over>0&&T("v_over"))player.sh=Math.min(player.maxHp*.3,player.sh+over);   // 흡혈귀 특전: 초과 회복 → 보호막
 }
 function hurt(n){
- if(running&&pendingWin<=0&&isSw()&&swPre())return;   // 검객: 간파 / 반격 자세 / 스킬 무적
+ if(running&&pendingWin<=0&&isSw()&&swPre())return;
+ if(running&&pendingWin<=0&&isSt()&&stPre())return;   // 스텔라: 빅뱅 영창 중 무적   // 검객: 간파 / 반격 자세 / 스킬 무적
  if(!running||pendingWin>0||player.dashT>0||player.invT>0)return;   // 구르는 중 / 부활 직후 무적
  if(T("r_dodge")&&Math.random()<.2){if(hurtFxT<=0){hurtFxT=.25;vfx({type:"txt",x:player.x,y:player.y-30,t:"회피!",life:.4,max:.4,c:"#bfffbf"})}return}
  let d=n*armorMul()*(isSw()?swArmor():1);
+ if(player.st)player.st.calm=0;                                  // 별의 장막: 맞으면 재생 대기 초기화
  if(player.sh>0){ // 성기사 보호막
   const a=Math.min(player.sh,d);player.sh-=a;d-=a;
-  if(player.sh<=0){player.sh=0;holyNova()}
+  if(player.sh<=0){player.sh=0;if(isJob("knight"))holyNova()}   // 성광 폭발은 성기사만
   if(d<=0)return;
  }
  player.hp-=d;player.flash=.12;shake=Math.max(shake,d>=5?9:5);
@@ -81,6 +83,7 @@ function addRage(){if(!isJob("berserker"))return;const was=player.rage|0,mx=rage
 function tryDash(){
  if(isJob("gunslinger")){gunRoll();return}
  if(isJob("swordsman")){swDash();return}
+ if(isJob("stella")){stTele();return}
  if(!isJob("ranger")||!running||paused||player.dashCD>0)return;
  const a=player.moving?player.aim:(player.face>0?0:Math.PI);
  player.dashT=.22;player.dashCD=T("r_cd")?1.5:2.5;player.critT=T("r_crit")?4:2.2;player.dvx=Math.cos(a);player.dvy=Math.sin(a);

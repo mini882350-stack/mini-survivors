@@ -64,7 +64,10 @@ addEventListener("keydown",e=>{
  if(running&&!paused&&/^Digit[1-4]$/.test(e.code)&&selCh==="gunslinger")useSkill(+e.code[5]-1);   // 총잡이 스킬
  if(running&&!paused&&e.code==="KeyE"&&selCh==="gunslinger")gunSwap();
  if(running&&!paused&&/^Digit[1-4]$/.test(e.code)&&selCh==="swordsman")useSwSkill(+e.code[5]-1);   // 검객 스킬
- if(running&&!paused&&e.code==="KeyE"&&selCh==="swordsman")swUlt();                                // 검객 궁극기                         // 총잡이 총 교체
+ if(running&&!paused&&e.code==="KeyE"&&selCh==="swordsman")swUlt();
+ if(running&&!paused&&(e.code==="KeyE"||e.code==="KeyF")&&selCh==="stella")stUlt(e.code==="KeyF"?1:0);   // 스텔라 궁극마법
+ if(e.code==="KeyR"&&save&&!$("levelup").style.display.includes("flex")&&$("chest").style.display!=="flex"){   // R: 재시작 (결과 화면 · 일시정지 메뉴)
+  if($("gameover").style.display==="flex")restartRun(false);else if($("pause").style.display==="flex"&&running&&!pauseFromTitle)restartRun(true)}                                // 검객 궁극기                         // 총잡이 총 교체
  if((e.code==="Space"||e.code==="ShiftLeft"||e.code==="ShiftRight")&&running){if(e.code==="Space")e.preventDefault();if(!paused)tryDash()}
  if(e.code==="Tab"){e.preventDefault();if($("pause").style.display==="flex")closePause();else if(running&&!paused)openPause(false,"stats")}
  if(paused&&(e.code==="KeyR"||e.code==="KeyX")){
@@ -127,6 +130,7 @@ function update(dt){
  updateWeapons(dt);      // weapons.js
  updateGun(dt);          // gun.js — 총잡이 리볼버/스킬
  updateSword(dt);updateSwordFx(dt);   // sword.js — 검객
+ updateStella(dt);updateStelObjs(dt);  // stella.js — 보스 스텔라 패턴 · 플레이어블 스텔라
  updateEffects(dt);      // effects.js
  updateEnemies(dt);      // enemies.js
  buildGrid();            // core.js — 이동이 끝난 적 위치로 공간 그리드 재구성
@@ -165,9 +169,10 @@ function reset(){
  if(c.start)weaponUpgrade(c.start);
  if(selCh==="gunslinger")gunInit();else player.gun=null;
  if(selCh==="swordsman")swInit();else player.sw=null;SWFX.length=0;SWX.length=0;
- $("hint").textContent=selCh==="swordsman"?"WASD 이동 · 클릭 베기(누르고 있으면 연격) · Space 섬보(무적, 직전 회피 시 간파) · 휠 스킬 선택 · 우클릭 스킬 · E 궁극기 · Esc 메뉴":selCh==="gunslinger"?"WASD 이동 · 클릭 사격(누르고 있으면 연사) · E 총 교체 · 휠 스킬 선택 · 우클릭 스킬 사용 · Space 구르기+재장전 · Esc 메뉴":"WASD 이동 · 자동 공격 · 1~5 선택 · Space 구르기(레인저) · Esc 메뉴 · Tab 내 스탯 · M 음소거 · F3 FPS";
+ if(selCh==="stella")stInit();else player.st=null;STB.length=0;STO.length=0;
+ $("hint").textContent=selCh==="stella"?"WASD 이동 · 클릭 별빛 탄(누르고 있으면 연사) · 루트 마법 자동 · Space 텔레포트 · E·F 궁극마법 · Esc 메뉴":selCh==="swordsman"?"WASD 이동 · 클릭 베기(누르고 있으면 연격) · Space 섬보(무적, 직전 회피 시 간파) · 휠 스킬 선택 · 우클릭 스킬 · E 궁극기 · Esc 메뉴":selCh==="gunslinger"?"WASD 이동 · 클릭 사격(누르고 있으면 연사) · E 총 교체 · 휠 스킬 선택 · 우클릭 스킬 사용 · Space 구르기+재장전 · Esc 메뉴":"WASD 이동 · 자동 공격 · 1~5 선택 · Space 구르기(레인저) · Esc 메뉴 · Tab 내 스탯 · M 음소거 · F3 FPS";
  canvas.style.cursor=selCh==="gunslinger"&&!TOUCH?"none":"";
- hideAll();running=true;paused=false;clearMove();if(selCh==="swordsman")swChooseStart();E.boss._on=false;E.boss.style.display="none";
+ hideAll();running=true;paused=false;clearMove();if(selCh==="swordsman")swChooseStart();if(selCh==="stella")stChooseStart();E.boss._on=false;E.boss.style.display="none";
  toast(mode===1?"∞ 무한 모드 · 얼마나 버틸 수 있을까?":"WASD로 이동 · 자동 공격");setTimeout(()=>toast(""),1800);
  updateUI();
 }

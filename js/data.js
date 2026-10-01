@@ -106,6 +106,7 @@ const CH={
  cryo:{n:"빙결 마녀",i:"❄️",start:"frost",hp:0,sp:0,cost:800,trait:"혹한의 기운",d:"주변 적에게 1초마다 냉기를 겁니다(둔화, 5중첩 시 빙결). 빙결된 적에게 주는 피해 +30%."},
  gunslinger:{n:"총잡이",i:"🤠",start:null,hp:10,sp:.05,cost:100000,trait:"황야의 총잡이",d:"마우스로 조준 · 클릭(누르고 있으면 연사)으로 사격 · 휠로 스킬 선택, 우클릭으로 사용 (기본: 패닝) · E: 리볼버/산탄총/장총 교체 · Space: 즉시 재장전 무적 구르기(3초). 레벨업에서 총기·스킬·스탯 강화만 등장합니다."},
  swordsman:{n:"검객",i:"⚔️",start:null,hp:20,sp:.08,cost:0,req:"gs3",startLbl:"刀 도 · 劍 검 · 大 대검 (시작 시 선택)",trait:"섬보와 간파",d:"마우스로 조준 · 클릭(누르고 있으면 연격)으로 베기 · Space: 무적 섬보 — 공격이 닿기 직전에 피하면 '간파'로 반격 버프 · 휠로 스킬 선택, 우클릭 사용 · Lv.10 특전에서 무기가 진화하고 궁극기(E)가 열립니다."},
+ stella:{n:"별의 아이 스텔라",i:"🌟",start:null,hp:-10,sp:.06,cost:0,req:"stella",startLbl:"🪄 별 부름 지팡이 (원소 / 우주 루트 선택)",trait:"별의 장막",d:"마우스로 조준 · 클릭(누르고 있으면 연사)으로 별빛 탄 · 루트 마법은 자동 시전 · 맞지 않으면 다시 차오르는 실드 · Space: 조준점으로 텔레포트 · Lv.10 특전 E, Lv.20 특전 F 궁극마법."},
  gambler:{n:"도박사",i:"🎲",start:"shuriken",hp:-10,sp:.05,cost:1000,trait:"행운의 주사위",d:"레벨업·상자 선택지 +1, 레벨업마다 다시 뽑기 2회. 치명타 확률 +10%."}
 };
 /* 직업별 외형 (hero.js의 리깅 캐릭터가 사용)
@@ -132,6 +133,8 @@ const LOOK={
   head:"cowboy",hat:"#7a4e2a",hat2:"#3a2414",item:"revolver",tails:"#8a5630",badge:1,kerchief:"#c8302e",stubble:1,ol:"#1a0e06"},
  swordsman:{skin:"#f4d2b4",hair:"#1a1c2e",hs:"long",eye:"#8ad0ff",fit:"coat",c1:"#2a3a6a",c2:"#141c36",c3:"#e8e4f0",trim:"#c8d8ff",pants:"#1c2238",boots:"#2a2a34",
   head:"headband",band:"#e83a4a",item:"blade",tails:"#2a3a6a",kerchief:"#e8e4f0",ol:"#0a0c18"},
+ stella:{skin:"#fbe8f0",hair:"#dfe6ff",hs:"long",eye:"#ffd36a",fit:"dress",c1:"#4a36a8",c2:"#160c46",c3:"#c8b8ff",trim:"#ffe58a",pants:"#2a2060",boots:"#efe8ff",
+  cape:"#140a40",capeIn:"#7a5ae0",head:"startiara",item:"starstaff",mote:"star",ol:"#0a0620"},
  gambler:{skin:"#f2cca8",hair:"#2a1a12",hs:"short",eye:"#e0a830",fit:"vest",c1:"#2c7a52",c2:"#123a26",c3:"#f4f1e8",trim:"#f2c14e",pants:"#1e1e26",boots:"#2a1a14",
   head:"tophat",hat:"#18181e",hat2:"#d8384a",item:"cards",tails:"#1a2a22",chain:1,ol:"#08100c"}
 };

@@ -461,6 +461,7 @@ function updateProjectiles(dt){
    hitE(e,s.gun?gunPre(e,s):s.damage,s.kind==="arcane"?"#e6a0ff":s.kind==="icelance"||s.kind==="abszero"||s.kind==="shard"?"#dff8ff":"#fff",s.kind,s.vx/LL,s.vy/LL);
    if(s.kb)push(e,s.vx/LL,s.vy/LL,s.kb);
    if(s.sw)swShotHit(e,s);
+   if(s.stl)stShotHit(e,s);
    if(s.gun&&gunHit(e,s))break;                       // 도탄으로 튕겼으면 관통 소모 없이 계속 비행
    if(!s.boom){if(s.pierce>0)s.pierce--;else s.life=0}
    if(s.life<=0)break;

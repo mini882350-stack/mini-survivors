@@ -31,18 +31,24 @@ function kickR(p){const a=Math.random()*6.283;kick(Math.cos(a),Math.sin(a),p)}
    신호 흐름: sfxBus(효과음) / musBus(음악) → master → 로우패스 → 컴프레서 → 출력, 리버브는 send로 섞음 */
 let AC=null,master=null,sfxBus=null,musBus=null,voices=0,musV=0,nbuf=null,muted=false;
 /* 오디오 부하 관리: 효과음과 음악의 동시 발음 수를 따로 셈 → 후반 효과음 폭주가 배경음을 밀어내지 않음 */
-const SFX_MAX=22,MUS_MAX=44;let sfxWin=0,sfxN=0;
+const SFX_MAX=16,MUS_MAX=44,HIT_MAX=5;let sfxWin=0,sfxN=0;
+/* 동시 발음 수: 각 소리가 '끝나는 시각' 목록으로 셈 → onended가 누락돼도 자동으로 회복 (예전엔 카운터가 새면 효과음이 영영 막힘)
+   타격음은 전용 몫(HIT)을 따로 둬서 공격·처치음이 아무리 많아도 항상 들림 */
+const VEND=[],MEND=[],HEND=[];
+function liveN(q,n){let j=0;for(let i=0;i<q.length;i++)if(q[i]>n)q[j++]=q[i];q.length=j;return j}
+let nodeWin=0,nodeN=0;
+function nodeOk(n){if(n-nodeWin>.1){nodeWin=n;nodeN=0}return ++nodeN<=12}   // 효과음은 0.1초에 최대 12음 (오디오 스레드 과부하 = 소리 깨짐 방지)
 const lastNote=new Map(),sfxLast=new Map();
 function setVol(){if(!master)return;master.gain.value=muted?0:.9*S.vol;sfxBus.gain.value=S.svol;musBus.gain.value=S.mvol*.85}
 function sfxInit(){
  if(AC)return AC;
  try{
-  const a=AC=new(window.AudioContext||window.webkitAudioContext)();
+  const AC_=window.AudioContext||window.webkitAudioContext;let a;try{a=new AC_({latencyHint:"balanced"})}catch(e){a=new AC_()}AC=a;   // 버퍼를 조금 키워 끊김(언더런) 방지
   master=a.createGain();sfxBus=a.createGain();musBus=a.createGain();setVol();
   const lp=a.createBiquadFilter();lp.type="lowpass";lp.frequency.value=11000;
   const cmp=a.createDynamicsCompressor();cmp.threshold.value=-16;cmp.ratio.value=4;cmp.attack.value=.004;cmp.release.value=.18;
   sfxBus.connect(master);musBus.connect(master);master.connect(lp);lp.connect(cmp);cmp.connect(a.destination);
-  const len=Math.floor(a.sampleRate*2.2),buf=a.createBuffer(2,len,a.sampleRate);
+  const len=Math.floor(a.sampleRate*1.3),buf=a.createBuffer(2,len,a.sampleRate);   // 리버브 길이 2.2→1.3초 (연산량 절감)
   for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2)}
   const cv=a.createConvolver();cv.buffer=buf;
   const sSend=a.createGain();sSend.gain.value=.16;const mSend=a.createGain();mSend.gain.value=.34;
@@ -53,19 +59,21 @@ function sfxInit(){
 /* 필터 노이즈: type lowpass/highpass/bandpass, fc → f2로 스윕 */
 function noise(t,d,v,fc,type,f2,bus){
  const a=AC;if(!a||muted)return;
- const mus=bus===musBus;if(mus?musV>MUS_MAX:voices>SFX_MAX)return;
+ const mus=bus===musBus,hit=bus==="hit",n0=a.currentTime;if(hit)bus=null;
+ if(mus){if(liveN(MEND,n0)>MUS_MAX)return}else if(hit){if(liveN(HEND,n0)>=HIT_MAX)return}else if(liveN(VEND,n0)>=SFX_MAX||!nodeOk(n0))return;
  if(!nbuf){nbuf=a.createBuffer(1,a.sampleRate,a.sampleRate);const c=nbuf.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=Math.random()*2-1}
  const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();
  s.buffer=nbuf;s.loop=true;f.type=type||"lowpass";if(f.type==="bandpass")f.Q.value=1.2;
  f.frequency.setValueAtTime(fc,t);f.frequency.exponentialRampToValueAtTime(Math.max(40,f2||120),t+d);
  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
  s.connect(f);f.connect(g);g.connect(bus||sfxBus);s.start(t,Math.random()*.5);s.stop(t+d+.02);
- if(mus){musV++;s.onended=()=>musV--}else{voices++;s.onended=()=>voices--}
+ (mus?MEND:hit?HEND:VEND).push(t+d+.02);
 }
 /* 음 하나: f → fEnd 글라이드(선택), 톤에 맞는 필터와 배음 */
 function note(f,when,d,type,v,atk,bus,fEnd){
  try{
-  const a=sfxInit();if(!a||(!bus&&voices>SFX_MAX)||(bus&&musV>MUS_MAX)||muted)return;
+  const a=sfxInit();if(!a||muted)return;const n0=a.currentTime;
+  if(bus){if(liveN(MEND,n0)>MUS_MAX)return}else if(liveN(VEND,n0)>=SFX_MAX||!nodeOk(n0))return;
   if(a.state==="suspended")a.resume();
   if(!when&&!bus){ // 같은 효과음이 35ms 안에 겹치면 생략
    const k=type+(f>>3),l=lastNote.get(k);
@@ -77,13 +85,14 @@ function note(f,when,d,type,v,atk,bus,fEnd){
   o.frequency.setValueAtTime(f,t);
   if(fEnd)o.frequency.exponentialRampToValueAtTime(fEnd,t+d);
   else if(f<240&&!bus){o.frequency.setValueAtTime(f*1.5,t);o.frequency.exponentialRampToValueAtTime(f,t+.07)}
+  const lite=!bus&&(hard||VEND.length>8);   // 효과음이 많을 땐 배음 오실레이터 생략 (노드 수 절감)
   o2.frequency.value=f*2.005;g2.gain.value=hard?0:.2;
   fl.type="lowpass";fl.Q.value=.7;
   fl.frequency.setValueAtTime(Math.min(10000,Math.max(500,f*(hard?5:10))),t);
   fl.frequency.exponentialRampToValueAtTime(Math.max(260,f*1.4),t+d);
   g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v*1.7,t+atk);g.gain.exponentialRampToValueAtTime(.0001,t+d);
-  o.connect(fl);o2.connect(g2);g2.connect(fl);fl.connect(g);g.connect(bus||sfxBus);
-  o.start(t);o2.start(t);o.stop(t+d+.05);o2.stop(t+d+.05);if(bus){musV++;o.onended=()=>musV--}else{voices++;o.onended=()=>voices--}
+  o.connect(fl);if(!lite){o2.connect(g2);g2.connect(fl)}fl.connect(g);g.connect(bus||sfxBus);
+  o.start(t);o.stop(t+d+.05);if(!lite){o2.start(t);o2.stop(t+d+.05)}(bus?MEND:VEND).push(t+d+.05);
  }catch(e){}
 }
 function tone(f,d=.06,type="sine",v=.025){note(f,0,d,type,v)}
@@ -91,8 +100,8 @@ function chord(){[523.25,659.25,783.99,1046.5,1318.5].forEach((f,i)=>note(f,i*.0
 let hitSfxT=0;
 function hitSfx(){ // 타격음: 50ms에 한 번만, 음색 무작위
  const a=AC;if(!a||muted||a.state!=="running")return;
- const n=a.currentTime;if(n-hitSfxT<.05)return;hitSfxT=n;
- try{noise(n,.04,.05,2600+Math.random()*2200,"lowpass",600)}catch(e){}
+ const n=a.currentTime;if(n-hitSfxT<.06)return;hitSfxT=n;
+ try{noise(n,.045,.055,2600+Math.random()*2200,"lowpass",600,"hit")}catch(e){}
 }
 let critT=0,pickTn=0;
 function critSfx(){const a=AC;if(!a||a.currentTime-critT<.07)return;critT=a.currentTime;note(1500+Math.random()*200,0,.07,"triangle",.018);note(2300,.025,.09,"sine",.012)}
@@ -160,9 +169,11 @@ const SFX={
 function sfx(k){
  const s=SFX[k];if(!s)return;
  const a=sfxInit();if(!a||muted||a.state!=="running")return;
- const n=a.currentTime,l=sfxLast.get(k);if(l!==undefined&&n-l<s[0])return;
- if(n-sfxWin>.1){sfxWin=n;sfxN=0}if(++sfxN>9)return;                              // 0.1초에 효과음 9개까지 (오디오 스레드 과부하 방지)
+ const n=a.currentTime,l=sfxLast.get(k);if(l!==undefined&&n-l<Math.max(s[0],k==="kill"?.07:.08))return;   // 같은 소리는 최소 0.08초 간격 (연사·다수 처치 시 과부하 방지)
+ if(n-sfxWin>.1){sfxWin=n;sfxN=0}if(++sfxN>6)return;                              // 0.1초에 효과음 9개까지 (오디오 스레드 과부하 방지)
  sfxLast.set(k,n);
+ // 자동 볼륨: 동시에 울리는 효과음이 많을수록 효과음 버스를 살짝 줄임
+ const act=liveN(VEND,n),tg=S.svol*Math.min(1,2.2/Math.sqrt(Math.max(1,act)));if(Math.abs(sfxBus.gain.value-tg)>.02)sfxBus.gain.setTargetAtTime(tg,n,.06);
  try{s[1](n)}catch(e){}
 }
 function stinger(k){
@@ -181,9 +192,13 @@ const SONG=[
  {n:"고요한 숲",bpm:110,prog:[[57,60,64],[53,57,60],[48,52,55],[55,59,62]],bass:[45,41,36,43],arp:[0,1,2,1,2,1,0,2]},     // Am F C G
  {n:"저주받은 폐허",bpm:110,prog:[[57,60,64],[53,56,60],[50,53,57],[52,56,59]],bass:[45,41,38,40],arp:[0,2,1,2,0,1,2,1]},  // Am Fm Dm E
  {n:"용암 협곡",bpm:110,prog:[[50,53,57],[51,55,58],[50,53,57],[48,51,55]],bass:[38,39,38,36],arp:[0,1,2,1,0,2,1,2]},     // Dm Eb Dm Cm
- {n:"독버섯 늪",bpm:104,prog:[[52,55,59],[53,57,60],[50,53,57],[52,56,59]],bass:[40,41,38,40],arp:[0,2,1,0,2,1,2,0]},      // Em F Dm E
- {n:"태엽 성채",bpm:120,prog:[[49,52,56],[45,49,52],[47,50,54],[44,48,51]],bass:[37,33,35,32],arp:[0,1,2,1,0,1,2,1]},      // C#m A Bm G#
- {n:"별의 심연",bpm:100,prog:[[46,49,53],[42,46,49],[44,48,51],[41,45,48]],bass:[34,30,32,29],arp:[0,2,1,2,0,2,1,2]}       // Bbm Gb Ab F
+ // ── 챕터 2 고유곡: style로 전용 연주 방식 사용 ──
+ {n:"독버섯 늪",style:"swamp",bpm:84,prog:[[52,55,59],[53,57,60],[52,55,59],[50,53,57]],bass:[40,41,40,38],arp:[0,2,1,0,2,1,2,0],   // Em F Em Dm (프리지안): 어둡고 축축하게
+  lead:[[4,64,6],[12,65,4],[20,64,8],[34,67,3],[38,65,3],[44,64,6],[52,63,4],[58,64,6]]},
+ {n:"태엽 성채",style:"clock",bpm:128,prog:[[50,54,57],[48,52,55],[55,59,62],[50,54,57]],bass:[38,36,43,38],arp:[0,1,2,1,0,1,2,1],   // D C G D (믹솔리디안): 딱딱하고 경쾌하게
+  lead:[[0,74,1],[2,78,1],[4,81,1],[6,78,1],[8,79,2],[10,81,1],[12,83,2],[16,81,1],[18,79,1],[20,78,1],[22,76,1],[24,74,2],[28,72,2],[32,74,1],[34,78,1],[36,81,1],[38,86,1],[40,84,2],[42,83,1],[44,81,2],[48,79,1],[50,81,1],[52,79,1],[54,78,1],[56,76,2],[60,74,3]]},
+ {n:"별의 심연",style:"cosmos",bpm:88,prog:[[46,50,53],[48,52,55],[45,48,52],[43,46,50]],bass:[34,36,33,31],arp:[0,2,1,2,0,2,1,2],   // Bb C Am Gm (리디안): 신비롭고 기묘하게
+  lead:[[0,77,8],[8,82,6],[16,81,8],[24,76,6],[32,77,6],[38,79,2],[40,82,8],[48,86,10],[60,84,4]]}
 ];
 /* 신나는 곡: 8분음표 베이스 · 4박 킥 · 오프비트 하이햇 · 리드 멜로디 [16분음표 위치, MIDI, 길이] (4마디 반복) */
 const UPSONG=[
@@ -194,26 +209,31 @@ const UPSONG=[
  {n:"돌격",bpm:126,drive:1,prog:[[55,58,62],[51,55,58],[58,62,65],[53,57,60]],bass:[43,39,46,41],arp:[0,1,2,1,2,1,0,1],
   lead:[[0,79,2],[2,77,2],[4,74,4],[8,74,2],[10,77,2],[12,79,2],[14,82,2],[16,79,3],[19,75,1],[20,74,4],[24,70,2],[26,74,2],[28,75,4],[32,77,2],[34,74,2],[36,70,4],[40,74,2],[42,77,2],[44,82,4],[48,81,2],[50,77,2],[52,72,4],[56,77,2],[58,81,2],[60,84,4]]}
 ];
-for(const u of UPSONG){u.L=new Array(64).fill(null);for(const[st,n,l]of u.lead)u.L[st]=[n,l]}
+/* 최종 보스 스텔라 전용 (D 단조, 빠르고 웅장하게) */
+const STELLA_SONG={n:"별의 아이",style:"stella",bpm:150,prog:[[50,53,57],[46,50,53],[48,52,55],[45,49,52]],bass:[38,34,36,33],arp:[0,1,2,1,0,2,1,2],
+ lead:[[0,74,2],[2,77,2],[4,81,4],[8,79,2],[10,77,2],[12,76,4],[16,74,2],[18,77,2],[20,82,4],[24,81,2],[26,79,2],[28,77,4],[32,76,2],[34,79,2],[36,84,4],[40,82,2],[42,81,2],[44,79,4],[48,81,2],[50,77,2],[52,73,4],[56,76,4],[60,81,4]]};
+for(const u of UPSONG.concat(SONG.filter(s=>s.lead),[STELLA_SONG])){u.L=new Array(64).fill(null);for(const[st,n,l]of u.lead)u.L[st]=[n,l]}
 let seqT=0,seqStep=0,inten=0,bossOn=false,song=SONG[0],songEnd=150,songPend=false;
 /* 곡 고르기: 설정(랜덤 / 스테이지 곡 / 신나는 곡)에 따라, 직전 곡은 피해서 무작위 */
 function pickSong(){
- const st=SONG[selSt]||SONG[0],pool=S.bgm==="stage"?[st]:S.bgm==="up"?UPSONG:[st].concat(UPSONG);
+ if(runSt&&runSt.duel&&elapsed>0){song=STELLA_SONG;BPM=song.bpm;STEP=60/BPM/4;return}   // 스텔라 결투 중엔 전용곡 고정
+ const st=SONG[selSt]||SONG[0],pool=S.bgm==="stage"||(st.style&&S.bgm!=="up")?[st]:S.bgm==="up"?UPSONG:[st].concat(UPSONG);   // 챕터 2는 스테이지 고유곡
  let c=pool[Math.floor(Math.random()*pool.length)];if(pool.length>1&&c===song)c=pool[(pool.indexOf(c)+1)%pool.length];
  song=c;BPM=c.bpm;STEP=60/BPM/4;
 }
 function musicReset(){seqStep=0;seqT=0;inten=0;pickSong();songEnd=150;songPend=false}
 function mv(f,t,d,type,v,atk,cut,rel){ // 음악용 음 (음악 버스, 필터 컷오프 지정)
- const a=AC;if(musV>MUS_MAX)return;
+ const a=AC;if(liveN(MEND,a.currentTime)>MUS_MAX)return;
  const o=a.createOscillator(),fl=a.createBiquadFilter(),g=a.createGain();
  o.type=type;o.frequency.value=f;fl.type="lowpass";fl.frequency.value=cut;fl.Q.value=.8;
  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+atk);g.gain.setValueAtTime(v,t+Math.max(atk,d-(rel||.1)));g.gain.exponentialRampToValueAtTime(.0001,t+d);
- o.connect(fl);fl.connect(g);g.connect(musBus);o.start(t);o.stop(t+d+.05);musV++;o.onended=()=>musV--;
+ o.connect(fl);fl.connect(g);g.connect(musBus);o.start(t);o.stop(t+d+.05);MEND.push(t+d+.05);
 }
 function kickDrum(t,v){const a=AC,o=a.createOscillator(),g=a.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(42,t+.22);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+.3);o.connect(g);g.connect(musBus);o.start(t);o.stop(t+.32)}
 function playStep(i,t){
  const sg=song,bar=Math.floor(i/16)%4,s=i%16,ch=sg.prog[bar];
  if(sg.drive){playDrive(sg,i,t,bar,s,ch);return}
+ if(sg.style){MSTY[sg.style](sg,i,t,bar,s,ch);return}
  const L=inten;
  if(s===0){ // 패드: 디튠한 톱니파 두 겹, 강도가 오를수록 필터가 열림
   const cut=700+L*1600;
@@ -231,6 +251,53 @@ function playStep(i,t){
  if(L>.25&&(L>.75||s%2===0))noise(t,.035,s%4===2?.014:.009,9000,"highpass",7000,musBus);   // 하이햇
  if(bossOn&&s%8===0)mv(mtof(ch[0]-23),t,STEP*8,"sawtooth",.01,.2,500,.3);                // 보스: 불협 저음 드론
 }
+/* 음정이 미끄러지는 음 (물방울 · 개구리 · 테레민) */
+function mg(f,f2,t,d,type,v,cut){const a=AC;if(liveN(MEND,a.currentTime)>MUS_MAX)return;const o=a.createOscillator(),fl=a.createBiquadFilter(),g=a.createGain();
+ o.type=type;o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f2,t+d);fl.type="lowpass";fl.frequency.value=cut;
+ g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+Math.min(.04,d*.2));g.gain.exponentialRampToValueAtTime(.0001,t+d);
+ o.connect(fl);fl.connect(g);g.connect(musBus);o.start(t);o.stop(t+d+.05);MEND.push(t+d+.05)}
+const MSTY={
+ /* 독버섯 늪: 웅웅거리는 어두운 패드 · 심장 박동 같은 킥 · 물방울 · 거품 · 개구리 울음 · 흐느끼는 리드 */
+ swamp(sg,i,t,bar,s,ch){const L=inten;
+  if(s===0){const cut=380+L*700;for(const n of ch){mv(mtof(n),t,STEP*16+.8,"sawtooth",.0034,1.4,cut,1.1);mv(mtof(n)*.992,t,STEP*16+.8,"sawtooth",.003,1.4,cut,1.1)}mv(mtof(ch[0]-24),t,STEP*16+.5,"sine",.022,1,180,.9)}
+  if(s===0||s===3||(L>.45&&(s===8||s===11)))kickDrum(t,.07+L*.06);
+  if(L>.12&&(s===0||s===10))mv(mtof(sg.bass[bar]),t,STEP*5,"triangle",.026,.03,480,.35);
+  if((s===5||s===13||(L>.3&&s===9))&&Math.random()<.7){const f=1400+Math.random()*900;mg(f,f*.45,t+Math.random()*STEP,.12,"sine",.009,4000)}   // 물방울
+  if(L>.2&&s%4===2&&Math.random()<.55)noise(t,.08,.022,520,"lowpass",110,musBus);                                                         // 거품
+  if(bar===3&&s===12&&Math.random()<.7)mg(150,85,t,.32,"square",.006,700);                                                                   // 개구리
+  const ld=sg.L[i%64];if(ld&&L>.2){const f=mtof(ld[0]);mg(f*1.02,f,t,STEP*ld[1],"sine",.008,1600);mv(f*.5,t,STEP*ld[1],"triangle",.003,.2,900,.3)}
+  if(bossOn&&s%8===0)mv(mtof(ch[0]-23),t,STEP*8,"sawtooth",.01,.2,500,.3)},
+ /* 태엽 성채: 째깍째깍 · 쇳소리 · 스타카토 베이스 · 래칫 · 장난감 로봇 같은 멜로디 */
+ clock(sg,i,t,bar,s,ch){const L=Math.max(inten,.3);
+  if(s===0)for(const n of ch)mv(mtof(n),t,STEP*16,"square",.0016,.04,800+L*800,.3);
+  noise(t,.016,s%4===0?.028:.014,s%2?5400:3600,"bandpass",s%2?5000:3300,musBus);                                                          // 째깍
+  if(s===0||s===8||(L>.6&&s===10))kickDrum(t,.15);
+  if(s===4||s===12){mv(1180,t,.09,"square",.0055,.001,4200,.06);mv(1717,t,.07,"sine",.008,.001,6000,.05);noise(t,.05,.026,6000,"highpass",3000,musBus)}   // 쇳소리
+  if(s%2===0){const n=sg.bass[bar]+(s%8===4?12:0)+(s===14?7:0);mv(mtof(n),t,STEP*.85,"square",.013,.002,560+L*600,.03);mv(mtof(n-12),t,STEP*.85,"sine",.018,.002,240,.03)}
+  if(s===15&&bar===3)for(let k=0;k<6;k++)noise(t+k*STEP/6,.012,.024,4000,"bandpass",3000,musBus);                                          // 래칫
+  const ld=sg.L[i%64];if(ld){const f=mtof(ld[0]);mv(f,t,STEP*ld[1]*.6,"square",.0055,.002,3200,.04);mv(f*2,t,STEP*ld[1]*.4,"triangle",.0035,.002,5000,.04)}
+  if(L>.5&&bar===1&&s===8)noise(t,.4,.018,7000,"highpass",9000,musBus);                                                                      // 증기
+  if(bossOn&&s%8===0)mv(mtof(ch[0]-23),t,STEP*8,"sawtooth",.01,.2,500,.3)},
+ /* 별의 심연: 반짝이는 메아리 아르페지오 · 테레민 같은 미끄러지는 리드 · 별 반짝임 · 아득한 저음 */
+ cosmos(sg,i,t,bar,s,ch){const L=inten;
+  if(s===0){for(const n of ch){mv(mtof(n),t,STEP*16+1.4,"sine",.008,1.6,2200,1.3);mv(mtof(n+12)*1.004,t,STEP*16+1.4,"triangle",.0028,2,3200,1.3)}mv(mtof(ch[0]-12),t,STEP*16,"sine",.012,1.2,380,1)}
+  if(s%2===0){const n=ch[sg.arp[(s/2)|0]]+24+(s%8===6?7:0),f=mtof(n);mv(f,t,STEP*1.5,"triangle",.005,.003,5200,.2);mv(f,t+STEP*3,STEP*1.5,"triangle",.0018,.003,4000,.2)}
+  if(L>.2&&(s===0||s===8))mv(mtof(sg.bass[bar]),t,STEP*6,"sine",.03,.05,300,.5);
+  if(L>.4&&(s===0||s===10))kickDrum(t,.06+L*.05);
+  if(Math.random()<.16+L*.14)mv(mtof(84+[0,2,4,6,7,9,11][Math.random()*7|0]+(Math.random()<.5?12:0)),t+Math.random()*STEP,.28,"sine",.0032,.002,8000,.22);   // 반짝임
+  const ld=sg.L[i%64];if(ld&&L>.12){const f=mtof(ld[0]);mg(f*.94,f,t,STEP*ld[1],"sine",.0085,2600)}
+  if(bar===3&&s===8)noise(t,1.2,.014,300,"bandpass",3000,musBus);
+  if(bossOn&&s%8===0)mv(mtof(ch[0]-23),t,STEP*8,"sawtooth",.01,.2,500,.3)},
+ /* 스텔라 결투: 합창 같은 패드 · 펌핑 베이스 · 4박 킥 · 16분 아르페지오 · 영웅적인 단조 리드 */
+ stella(sg,i,t,bar,s,ch){
+  if(s===0)for(const n of ch){mv(mtof(n+12),t,STEP*16,"sine",.0075,.4,3000,.5);mv(mtof(n),t,STEP*16,"sawtooth",.003,.25,1600,.5)}
+  if(s%2===0){const n=sg.bass[bar]+(s%4===2?12:0);mv(mtof(n),t,STEP*1.6,"sawtooth",.02,.003,900,.05);mv(mtof(n-12),t,STEP*1.6,"sine",.024,.003,250,.05)}
+  if(s%4===0)kickDrum(t,.18);
+  if(s===4||s===12){noise(t,.15,.06,2500,"bandpass",1200,musBus);mv(190,t,.08,"triangle",.012,.002,1500,.05)}
+  noise(t,.03,s%2?.007:.012,9000,"highpass",7000,musBus);
+  {const n=ch[sg.arp[(s>>1)%8]]+24+(s%2?12:0);mv(mtof(n),t,STEP*.9,"triangle",.0045,.002,5000,.05)}
+  const ld=sg.L[i%64];if(ld){const f=mtof(ld[0]);mv(f,t,STEP*ld[1]*.95,"square",.007,.006,2800,.05);mv(f*1.005,t,STEP*ld[1]*.95,"sawtooth",.0035,.006,2000,.05)}}
+};
 /* 신나는 곡: 처음부터 킥·베이스·멜로디가 나오고, 강도가 오르면 아르페지오·클랩·16비트 하이햇이 더해짐 */
 function playDrive(sg,i,t,bar,s,ch){
  const L=Math.max(inten,.35);
