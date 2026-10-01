@@ -7,15 +7,15 @@ const pl=k=>save&&save.perks?save.perks[k]||0:0;
 const chr=()=>CH[selCh]||{};
 const isJob=k=>selCh===k;
 const T=k=>player.tal&&player.tal[k]?1:0;   // 직업 특전 보유 여부
-const dmgMul=()=>(1+passives.might.level*.15+pl("dmg")*.04)*(isJob("vamp")&&player.hp<player.maxHp*(T("v_low")?.7:.5)?(T("v_low")?1.5:1.3):1)*(1+player.rage*.012);
+const dmgMul=()=>DEV.dmg*(1+passives.might.level*.15+pl("dmg")*.04)*(isJob("vamp")&&player.hp<player.maxHp*(T("v_low")?.7:.5)?(T("v_low")?1.5:1.3):1)*(1+player.rage*.012);
 const rateMul=()=>Math.max(.4,1-passives.haste.level*.12)*(1-player.rage*.008)*(1-pl("cd")*.015)*(T("m_cd")?.85:1)*(T("p_spd")&&player.moving?.85:1);   // 광전사: 분노당 공격속도 +0.8%
 const speed=()=>player.speed*(1+passives.boots.level*.12)*(1+pl("spd")*.02)*(1+.15*(T("r_spd")+T("p_spd")))*(player.slow||1);   // slow: 독 늪 / 포자 구름
 const pickupRange=()=>125*(1+passives.magnet.level*.25)*(1+pl("magnet")*.04);
 const armorMul=()=>Math.max(.3,1-passives.armor.level*.08-(weapons.aegis&&weapons.aegis.level>0?.15:0))*(isJob("berserker")?(T("b_arm")?.9:1.1):1)*(T("k_aura")?.85:1)*(T("c_arm")?.85:1)*(1-pl("armor")*.015)*(1-passives.thorns.level*.03);
-const critC=()=>CRIT_C+passives.eye.level*.05+(player.critT>0?.4:0)+(isJob("gambler")?.1:0)+T("g_crit")*.15+(player.sw?(player.sw.u.scrit||0)*.06:0)+pl("crit")*.006;   // 레인저: 구른 뒤 +40%
-const critM=()=>CRIT_M+passives.eye.level*.15+(player.sw?(player.sw.u.scrit||0)*.2:0)+T("g_crit")*.3+(player.critT>0&&T("r_crit")?.5:0)+(player.gun?(player.gun.u.ghol||0)*.25:0);
-const statusPot=()=>(1+passives.amp.level*.2)*(T("m_amp")?1.4:1);                   // 상태이상 피해·지속 배율
-const rxMul=()=>(1+passives.cata.level*.3)*(isJob("mage")?1.5:1)*(T("m_rx")?1.3:1);  // 원소술사: 반응 피해 +50%
+const critC=()=>CRIT_C+passives.eye.level*.05+(player.critT>0?.4:0)+(isJob("gambler")?.1:0)+T("g_crit")*.15+(player.sw?(player.sw.u.scrit||0)*.06:0)+(player.st?(player.st.u.stcrit||0)*.05:0)+pl("crit")*.006;   // 레인저: 구른 뒤 +40%
+const critM=()=>CRIT_M+passives.eye.level*.15+(player.sw?(player.sw.u.scrit||0)*.2:0)+(player.st?(player.st.u.stcrit||0)*.15:0)+T("g_crit")*.3+(player.critT>0&&T("r_crit")?.5:0)+(player.gun?(player.gun.u.ghol||0)*.25:0);
+const statusPot=()=>(1+passives.amp.level*.2)*(T("m_amp")?1.4:1)*(1+((player.st&&player.st.u.stamp)||0)*.15);                   // 상태이상 피해·지속 배율
+const rxMul=()=>(1+passives.cata.level*.3)*(isJob("mage")?1.5:1)*(T("m_rx")?1.3:1)*(1+((player.st&&player.st.u.staff)||0)*.25);  // 원소술사: 반응 피해 +50%
 const rxCd=()=>.7*(1-passives.cata.level*.12);
 const xpMul=()=>XP_MUL*(1+pl("xp")*.05);
 const areaMul=()=>1+passives.area.level*.12+pl("area")*.015;                    // 확산의 룬
@@ -34,6 +34,7 @@ function heal(n,capped){
  if(over>0&&T("v_over"))player.sh=Math.min(player.maxHp*.3,player.sh+over);   // 흡혈귀 특전: 초과 회복 → 보호막
 }
 function hurt(n){
+ if(DEV.god)return;                                              // 개발자 모드: 무적
  if(running&&pendingWin<=0&&isSw()&&swPre())return;
  if(running&&pendingWin<=0&&isSt()&&stPre())return;   // 스텔라: 빅뱅 영창 중 무적   // 검객: 간파 / 반격 자세 / 스킬 무적
  if(!running||pendingWin>0||player.dashT>0||player.invT>0)return;   // 구르는 중 / 부활 직후 무적

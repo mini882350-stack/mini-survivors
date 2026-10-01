@@ -248,3 +248,17 @@ body.touch.gunslinger #mDash{display:grid!important}
 .icon.swk{font:900 46px "Noto Serif KR","Noto Serif CJK KR",serif;line-height:1;text-shadow:0 0 18px currentColor}
 .skb.ult{border-color:#ffd36a}.skb.ult.ready{animation:ultpulse 1s ease-in-out infinite;border-color:#fff2b0}
 @keyframes ultpulse{0%,100%{box-shadow:0 0 0 #ffd36a00}50%{box-shadow:0 0 18px #ffd36acc}}
+
+/* 개발자 모드 */
+#devbtn{position:fixed;top:8px;right:8px;z-index:80;width:38px;height:38px;border-radius:10px;background:#2a2238dd;border:1px solid #ffd36a88;font-size:18px;cursor:pointer}
+#devov{display:none;position:fixed;top:54px;right:8px;z-index:81;width:min(460px,94vw);max-height:84vh;overflow:auto;padding:12px;border-radius:14px;background:#161226f2;border:1px solid #ffd36a66;box-shadow:0 20px 60px #000;font-size:13px}
+#devov .dvh{display:flex;justify-content:space-between;align-items:center;font-weight:800;color:#ffe58a;font-size:15px}
+#devov .dvh button{background:none;border:0;color:#fff;font-size:16px;cursor:pointer}
+#devov .dvs{margin:10px 0 5px;opacity:.65;font-size:11px;font-weight:800}
+#devov .dvg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#devov .dvg button{padding:7px 4px;border-radius:8px;background:#ffffff14;border:1px solid #ffffff1c;color:#eee;font-size:12px;cursor:pointer}
+#devov .dvg button:hover{background:#ffffff26}#devov .dvg button.on{background:#5b7fff55;border-color:#8aa4ff}
+#devov .dvn{margin-top:10px;font-size:11px;opacity:.6}
+.devrow{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:12px;font-size:12px;opacity:.8}
+.devrow input{width:130px;padding:5px 8px;border-radius:7px;border:1px solid #ffffff33;background:#0b0f18;color:#fff}
+.devrow button{padding:5px 10px;border-radius:7px;background:#ffffff1c;cursor:pointer}

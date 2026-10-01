@@ -248,6 +248,9 @@ function kill(e,quiet){
   if(e.curseT>0&&burstB>0){burstB--;const pw=curW;curW="st_curse";areaHit(e.x,e.y,85*areaMul(),Math.max(10,e.maxHp*.08*statusPot()),"#d890ff");curW=pw;
    vfx({type:"ring",x:e.x,y:e.y,r0:6,r1:85*areaMul(),life:.35,max:.35,c:"rgba(196,106,255,.9)",w:5});vfx({type:"light",x:e.x,y:e.y,r:170,life:.3,max:.3,c:"#c46aff"})}
   // 회복: 흡혈귀 / 흡혈의 이빨 / 불사조
+  // 스텔라 '상태 전염': 걸려 있던 상태이상을 주변 적에게 옮김
+  if(player.st&&player.st.u.stspread&&burstB>0){const sts=[];if(e.burnT>0)sts.push("burn");if(e.chillN>0||e.frozenT>0)sts.push("chill");if(e.shockT>0)sts.push("shock");if(e.poisonT>0)sts.push("poison");
+   if(sts.length){burstB--;let c=0;const n=1+player.st.u.stspread,dm=Math.max(10,stBase());for(const q of query(e.x,e.y,150,QD)){if(c>=n)break;if(q===e||q.hp<=0||q.phased)continue;c++;for(const st of sts)applyStatusQuiet(q,st,dm);if(impBudget>0){impBudget--;vfx({type:"zap",x:e.x,y:e.y,x2:q.x,y2:q.y,life:.15,max:.15,c:"#9fff6a"})}}}}
   // 화염술사 '연소 폭발' / 빙결 마녀 '얼음 파편'
   if(T("p_expl")&&e.burnT>0&&burstB>0&&Math.random()<.35){burstB--;const pw=curW;curW="trait";const RR=85*areaMul();areaHit(e.x,e.y,RR,Math.max(10,e.burnDps*3),"#ff9a4a","burn",Math.max(10,e.burnDps*3));curW=pw;
    vfx({type:"ring",x:e.x,y:e.y,r0:8,r1:RR,life:.3,max:.3,c:"rgba(255,140,60,.95)",w:5})}
@@ -300,7 +303,7 @@ function bossRush(){
 }
 /* 위협 단계 알림 + 적 스폰 */
 function updateSpawning(dt){
- if(runSt.duel)return;                                   // 스텔라와 1:1 결투 중엔 적이 나오지 않음
+ if(runSt.duel||DEV.nospawn)return;                      // 스텔라와 1:1 결투 중엔 적이 나오지 않음
  const nt=Math.floor(elapsed/120);if(nt>tier){tier=nt;toast(`⚠️ 적이 더 강해졌습니다! (위협 ${tier})`);sfx("warn")}
  spawn-=dt;
  if(spawn<=0){spawn=Math.max(.11,.72-elapsed*.0028);const n=elapsed>600?7:elapsed>480?6:elapsed>320?5:elapsed>200?4:elapsed>100?3:elapsed>45?2:1;if(enemies.length<450)for(let i=0;i<n;i++)spawnEnemy()}

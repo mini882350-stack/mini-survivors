@@ -263,7 +263,7 @@ const SETS=[
 ];
 const TABS=[["set","⚙ 설정"],["stats","📊 내 스탯"],["codex","📖 도감"],["combo","🔗 조합표"],["rx","⚗️ 원소 반응"]];
 const TABF={
- set:()=>SETS.map((s,i)=>`<div class="setrow" data-i="${i}">${s[0]}<span>${s[3](S[s[1]])}</span></div>`).join("")+`<div class="legend" style="text-align:center;margin-top:12px">항목을 클릭하면 바뀝니다 · 자동 저장 · 저사양 PC는 품질 '낮음'(조명 효과 끔)</div>`,
+ set:()=>SETS.map((s,i)=>`<div class="setrow" data-i="${i}">${s[0]}<span>${s[3](S[s[1]])}</span></div>`).join("")+`<div class="devrow">🛠 개발자 코드 <input id="devcode" autocomplete="off" placeholder="${DEV.on?"이미 켜져 있음":"코드 입력"}"><button data-devgo="1">확인</button></div>`+`<div class="legend" style="text-align:center;margin-top:12px">항목을 클릭하면 바뀝니다 · 자동 저장 · 저사양 PC는 품질 '낮음'(조명 효과 끔)</div>`,
  stats:tabStats,codex:tabCodex,combo:tabCombo,rx:tabRx
 };
 function tabStats(){
@@ -295,6 +295,7 @@ function srcName(k){
  if(k.startsWith("ss_")){const s=SW_SK[k.slice(3)];return s?`${s.i} ${s.n} <small>스킬</small>`:k}
  if(k.startsWith("su_")){const u=SW_ULT[{su_katana:"katana",su_sword:"sword",su_great:"great"}[k]];return u?`${u.i} ${u.n} <small>궁극기</small>`:k}
  if(k.startsWith("ul_")){const u=ST_ULT[k.slice(3)];return u?`${u.i} ${u.n} <small>궁극마법</small>`:k}
+ if(k.startsWith("sp_")){const s=ST_SK[k.slice(3)];return s?`${s.i} ${s.n} <small>마법</small>`:k}
  const STN={st_bolt:"⭐ 별빛 탄",st_shard:"✳️ 별 조각",st_orb:"🌈 원소 산탄",st_sing:"🌌 중력 붕괴",st_meteor:"☄️ 유성 낙하",st_storm:"🌀 원소 폭풍",st_tele:"✨ 텔레포트 폭발"};if(STN[k])return STN[k];
  const SWN={sw_slash:"⚔️ 베기",sw_slash3:"⚔️ 3타 베기",sw_thrust:"⚡ 섬광 찌르기",sw_wave:"🌙 검기",sw_slam:"💥 지면 강타",sw_dual:"🌙 쌍도 추가 베기",sw_crush:"🌋 파쇄 충격파",sw_flame:"🔥 염검 폭발",sw_frost:"❄️ 얼음 파편",sw_rai:"⚡ 뇌절 연쇄",sw_ghost:"👥 잔상 베기"};if(SWN[k])return SWN[k];
  if(k==="revolver")return "🔫 리볼버";if(k==="fan")return "🔫 패닝 <small>우클릭</small>";if(k==="gun_exp")return "💥 폭발탄";if(k==="gun_sg")return "💥 산탄총";if(k==="gun_rf")return "🎯 장총";if(k==="gun_wave")return "🌠 레일 충격파";if(k==="gun_exe")return "🪓 처형탄";if(k==="gun_roll")return "🌀 구르기 폭발";
@@ -479,8 +480,14 @@ $("codeov").addEventListener("click",async e=>{
 });
 
 /* ── 패치 노트: 새 버전으로 처음 접속했을 때 1회 팝업 (타이틀의 📜 버튼으로 다시 보기) ── */
-const GAME_VER="7.9.1";
+const GAME_VER="7.9.2";
 const NOTES=[
+ {v:"7.9.2",t:"스텔라 마법 확장",items:[
+  "🪄 스텔라에게 1~4번 마법 스킬 추가 (휠 선택 + 우클릭 · 숫자키) — 레벨업에서 배움",
+  "🌈 원소 루트: 화염 장벽 · 서리 폭발 · 연쇄 번개 · 독비 · 프리즘 광선",
+  "🌌 우주 루트: 혜성 · 중력장 · 별의 방벽 · 성좌 사슬 · 성운 폭발",
+  "패시브 추가 — 원소: 원소 친화 · 원소 증폭 · 상태 전염 / 우주: 중력 렌즈 · 별똥별 · 암흑 물질 / 공통: 마나 순환 · 도약 폭발",
+  "💫 원소 궁극마법 '뇌운' → '엘리멘탈 오라' (8초간 주위 거대한 범위에 모든 상태이상을 빠르게 부여)"]},
  {v:"7.9.1",t:"스텔라 새 디자인",items:["🌟 스텔라 디자인 변경: 앞머리 있는 보라색 장발 · 노란 별 머리핀과 별 무늬 장식","🎵 별의 심연 BGM을 더 경쾌하게 (템포 업 · 베이스 펄스 · 셰이커 · 촘촘한 멜로디)"]},
  {v:"7.9",t:"별의 아이 스텔라",items:[
   "🎵 챕터 2 고유 BGM — 🍄 독버섯 늪: 어둡고 축축한 늪 (물방울·거품·개구리) · ⚙️ 태엽 성채: 째깍거리는 기계 행진 · 🌌 별의 심연: 신비로운 우주",
@@ -526,3 +533,7 @@ $("notesov").addEventListener("click",e=>{if(e.target.closest("[data-n]")||e.tar
 function maybeNotes(){let seen=null;try{seen=localStorage.getItem("ms_ver")}catch(x){}
  if(seen!==GAME_VER){showNotes();try{localStorage.setItem("ms_ver",GAME_VER)}catch(x){}}}
 
+
+/* 설정 탭의 개발자 코드 입력 (모바일용) */
+document.addEventListener("click",e=>{const b=e.target.closest("[data-devgo]");if(!b)return;e.stopPropagation();const i=$("devcode");if(!i)return;
+ if(devTry(i.value)){i.value="";i.placeholder="켜짐 ✔"}else{i.value="";i.placeholder="코드가 맞지 않아요";sfx("ui")}},true);

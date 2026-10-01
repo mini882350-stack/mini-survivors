@@ -66,6 +66,7 @@ addEventListener("keydown",e=>{
  if(running&&!paused&&/^Digit[1-4]$/.test(e.code)&&selCh==="swordsman")useSwSkill(+e.code[5]-1);   // 검객 스킬
  if(running&&!paused&&e.code==="KeyE"&&selCh==="swordsman")swUlt();
  if(running&&!paused&&(e.code==="KeyE"||e.code==="KeyF")&&selCh==="stella")stUlt(e.code==="KeyF"?1:0);   // 스텔라 궁극마법
+ if(running&&!paused&&/^Digit[1-4]$/.test(e.code)&&selCh==="stella")stUseSkill(+e.code[5]-1);       // 스텔라 마법 스킬
  if(e.code==="KeyR"&&save&&!$("levelup").style.display.includes("flex")&&$("chest").style.display!=="flex"){   // R: 재시작 (결과 화면 · 일시정지 메뉴)
   if($("gameover").style.display==="flex")restartRun(false);else if($("pause").style.display==="flex"&&running&&!pauseFromTitle)restartRun(true)}                                // 검객 궁극기                         // 총잡이 총 교체
  if((e.code==="Space"||e.code==="ShiftLeft"||e.code==="ShiftRight")&&running){if(e.code==="Space")e.preventDefault();if(!paused)tryDash()}
