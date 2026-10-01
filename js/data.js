@@ -133,8 +133,8 @@ const LOOK={
   head:"cowboy",hat:"#7a4e2a",hat2:"#3a2414",item:"revolver",tails:"#8a5630",badge:1,kerchief:"#c8302e",stubble:1,ol:"#1a0e06"},
  swordsman:{skin:"#f4d2b4",hair:"#1a1c2e",hs:"long",eye:"#8ad0ff",fit:"coat",c1:"#2a3a6a",c2:"#141c36",c3:"#e8e4f0",trim:"#c8d8ff",pants:"#1c2238",boots:"#2a2a34",
   head:"headband",band:"#e83a4a",item:"blade",tails:"#2a3a6a",kerchief:"#e8e4f0",ol:"#0a0c18"},
- stella:{skin:"#fbe8f0",hair:"#dfe6ff",hs:"long",eye:"#ffd36a",fit:"dress",c1:"#4a36a8",c2:"#160c46",c3:"#c8b8ff",trim:"#ffe58a",pants:"#2a2060",boots:"#efe8ff",
-  cape:"#140a40",capeIn:"#7a5ae0",head:"startiara",item:"starstaff",mote:"star",ol:"#0a0620"},
+ stella:{skin:"#fbe8f0",hair:"#9a62e8",hs:"stellar",eye:"#ffd36a",fit:"dress",c1:"#3a2a8e",c2:"#150a42",c3:"#d8c8ff",trim:"#ffd84a",pants:"#2a2060",boots:"#efe8ff",
+  cape:"#140a40",capeIn:"#7a5ae0",head:"starpins",item:"starstaff",mote:"star",stars:1,eyeStyle:"anime",ol:"#120626"},
  gambler:{skin:"#f2cca8",hair:"#2a1a12",hs:"short",eye:"#e0a830",fit:"vest",c1:"#2c7a52",c2:"#123a26",c3:"#f4f1e8",trim:"#f2c14e",pants:"#1e1e26",boots:"#2a1a14",
   head:"tophat",hat:"#18181e",hat2:"#d8384a",item:"cards",tails:"#1a2a22",chain:1,ol:"#08100c"}
 };
