@@ -15,7 +15,7 @@ const armorMul=()=>Math.max(.3,1-passives.armor.level*.08-(weapons.aegis&&weapon
 const critC=()=>CRIT_C+passives.eye.level*.05+(player.critT>0?.4:0)+(isJob("gambler")?.1:0)+T("g_crit")*.15+(player.sw?(player.sw.u.scrit||0)*.06:0)+(player.st?(player.st.u.stcrit||0)*.05:0)+pl("crit")*.006;   // 레인저: 구른 뒤 +40%
 const critM=()=>CRIT_M+passives.eye.level*.15+(player.sw?(player.sw.u.scrit||0)*.2:0)+(player.st?(player.st.u.stcrit||0)*.15:0)+T("g_crit")*.3+(player.critT>0&&T("r_crit")?.5:0)+(player.gun?(player.gun.u.ghol||0)*.25:0);
 const statusPot=()=>(1+passives.amp.level*.2)*(T("m_amp")?1.4:1)*(1+((player.st&&player.st.u.stamp)||0)*.15);                   // 상태이상 피해·지속 배율
-const rxMul=()=>(1+passives.cata.level*.3)*(isJob("mage")?1.5:1)*(T("m_rx")?1.3:1)*(1+((player.st&&player.st.u.staff)||0)*.25);  // 원소술사: 반응 피해 +50%
+const rxMul=()=>(1+passives.cata.level*.3)*(isJob("mage")?1.5:1)*(T("m_rx")?1.3:1)*(1+((player.st&&player.st.u.staff)||0)*.25)*(player.st&&player.st.route==="elem"?1.5:1);  // 원소술사 · 스텔라 원소 루트: 반응 피해 +50%
 const rxCd=()=>.7*(1-passives.cata.level*.12);
 const xpMul=()=>XP_MUL*(1+pl("xp")*.05);
 const areaMul=()=>1+passives.area.level*.12+pl("area")*.015;                    // 확산의 룬

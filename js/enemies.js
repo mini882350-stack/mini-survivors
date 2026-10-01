@@ -426,7 +426,8 @@ function updateEnemies(dt){
     for(let i=0;i<count;i++){const a=Math.atan2(player.y-e.y,player.x-e.x)+(boss?i*Math.PI*2/count:seer?(i-1)*.28:0);shots.push({x:e.x,y:e.y,vx:Math.cos(a)*150,vy:Math.sin(a)*150,r:6,life:4,damage:(boss?18:13)*e.dmgS,enemy:true})}}
   }
   const cr=player.r+e.r;
-  if(d2(e,player)<cr*cr){
+  if(e.bhT>0)e.bhT-=dt;
+  if(d2(e,player)<cr*cr&&!(e.bhT>0)){                       // 블랙홀에 끌려가는 적은 닿아도 피해 없음
    if(e.ai==="bomber"){enemyBlast(e);e.hp=0}
    else{hurt((e.type==="boss"?34:e.hv?20:e.type==="elite"?17:11)*e.dmgS*(e.ai==="charger"&&e.st===2?1.6:1)*dt);
     const th=passives.thorns.level;if(th){const pw=curW;curW="thorns";dot(e,(20+th*15)*dmgMul()*dt,"thorns");curW=pw}}   // 가시 갑옷: 접촉 반사

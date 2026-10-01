@@ -89,7 +89,7 @@ function starPath(x,y,R,r){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.P
 
 /* ══════════ 2) 플레이어블 스텔라 ══════════ */
 const ST_ROUTE={
- elem:{i:"🌈",n:"원소 마법",c:"#ffb46a",d:"화염·냉기·번개·독 구슬을 넓게 흩뿌려 상태이상을 겹치고 원소 반응을 연쇄시킵니다. 별빛 탄도 원소를 띱니다."},
+ elem:{i:"🌈",n:"원소 마법",c:"#ffb46a",d:"화염·냉기·번개·독 구슬을 흩뿌려 상태이상을 겹치고 원소 반응을 연쇄시킵니다. 별빛 탄도 원소를 띱니다. 원소 반응 피해 +50%."},
  cosmos:{i:"🌌",n:"우주 마법",c:"#b090ff",d:"조준점에 중력 붕괴를 일으켜 적을 끌어모은 뒤 큰 피해로 터뜨립니다. 별빛 탄이 맞으면 별 조각으로 갈라집니다."}
 };
 const ST_ULT={
@@ -151,10 +151,10 @@ const ST_SK={
 const stSkCd=q=>ST_SK[q.k].cd*(1-.08*(q.lv-1))*(1-.08*((player.st&&player.st.u.stmana)||0));
 const stu=k=>(player.st&&player.st.u[k])||0;
 const ELC={burn:"#ff8a3a",chill:"#9fe8ff",shock:"#ffe14a",poison:"#9fff6a"},ELS=["burn","chill","shock","poison"],ELK={burn:"flame",chill:"crystal",shock:"bolt",poison:"poison"};
-const stBase=()=>26*(1+stu("stdmg")*.2)*(1+stu("stmast")*.12)*bounty()*dmgMul();
+const stBase=()=>50*(1+.08*(level-1))*(1+stu("stdmg")*.2)*(1+stu("stmast")*.12)*bounty()*dmgMul();
 const stArea=()=>(1+stu("starea")*.15)*(T("st_nebula")?1.3:1)*areaMul();
-const stInt=()=>.34*(1-stu("stspd")*.1)*rateMul()*(T("st_flux")?.75:1);
-const stPer=()=>(player.st.route==="elem"?1.2:2.6)*(1-stu("stfreq")*.1)*(T("st_flux")?.8:1);
+const stInt=()=>.28*(1-stu("stspd")*.1)*rateMul()*(T("st_flux")?.75:1);
+const stPer=()=>(player.st.route==="elem"?.95:1.7)*(1-stu("stfreq")*.1)*(T("st_flux")?.8:1);
 const stShieldMax=()=>player.maxHp*(.3+.12*stu("stshield"))*(T("st_aegis")?1.5:1);
 const stUltCd=k=>ST_ULT[k].cd*(T("st_ultcd")?.7:1);
 function stInit(){player.st={route:null,u:{},sk:[],sel:0,dkT:0,cd:0,aim:0,spT:1,sp2T:2,calm:9,eUlt:null,fUlt:null,eCD:0,fCD:0,act:null,picked:false,elI:0};player.sh=0}
@@ -180,21 +180,21 @@ function stBolt(){
  const s=player.st,n=1+stu("stmulti"),dm=stBase();curW="st_bolt";
  for(let i=0;i<n;i++){const a=s.aim+(i-(n-1)/2)*.14;
   const el=s.route==="elem"?ELS[(s.elI++)%4]:null;
-  addShot({x:player.x+Math.cos(a)*20,y:player.y-8+Math.sin(a)*20,vx:Math.cos(a)*720,vy:Math.sin(a)*720,r:7,life:.8,damage:dm,kind:"stbolt",pierce:s.route==="cosmos"?1:0,stl:1,el,col:el?ELC[el]:"#e8dcff"})}
+  addShot({x:player.x+Math.cos(a)*20,y:player.y-8+Math.sin(a)*20,vx:Math.cos(a)*720,vy:Math.sin(a)*720,r:7,life:.8,damage:dm,kind:"stbolt",pierce:s.route==="cosmos"?2:0,stl:1,el,col:el?ELC[el]:"#e8dcff"})}
  player.atk=1;player.atkCD=.12;sfx("orb");
 }
 function stShotHit(e,s){
  if(s.el)applyStatus(e,s.el,s.damage);
  if(stu("stmeteor")&&!s.shard&&Math.random()<.08*stu("stmeteor")){const pw=curW;curW="st_meteor";addX({t:"met",x:e.x,y:e.y,delay:.6,d0:.6,dm:stBase()*2.5,aoe:70*stArea(),star:1});curW=pw}
- if(player.st.route==="cosmos"&&!s.shard&&burstB>0){burstB--;const pw=curW;curW="st_shard";for(let k=0;k<3;k++){const a=Math.random()*6.283;addShot({x:e.x,y:e.y,vx:Math.cos(a)*420,vy:Math.sin(a)*420,r:5,life:.45,damage:s.damage*.35,kind:"stbolt",pierce:0,stl:1,shard:1,col:"#c8b8ff",lastE:e})}curW=pw}
+ if(player.st.route==="cosmos"&&!s.shard&&burstB>0){burstB--;const pw=curW;curW="st_shard";for(let k=0;k<4;k++){const a=Math.random()*6.283;addShot({x:e.x,y:e.y,vx:Math.cos(a)*420,vy:Math.sin(a)*420,r:5,life:.5,damage:s.damage*.5,kind:"stbolt",pierce:0,stl:1,shard:1,col:"#c8b8ff",lastE:e})}curW=pw}
 }
 /* 루트 마법 · 보조 마법 · 궁극마법 오브젝트 */
 const STO=[];
 function stCastRoute(){
  const s=player.st,pow=stBase()*(1+stu("stpow")*.15);
- if(s.route==="elem"){const n=5+stu("storb"),R=65*stArea(),cx=s.tx,cy=s.ty;
-  for(let i=0;i<n;i++){const a=Math.random()*6.283,r=Math.sqrt(Math.random())*170*stArea(),el=ELS[(s.elI++)%4];STO.push({t:"orb",x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,sx:player.x,sy:player.y-20,d:.38+i*.03,d0:.38+i*.03,R,el,dm:pow*1.1})}sfx("orb")}
- else{const R=150*stArea()*(1+stu("stgrav")*.12);STO.push({t:"sing",x:s.tx,y:s.ty,life:1,max:1,R,dm:pow*6*(1+stu("stgrav")*.25)});sfx("hole")}
+ if(s.route==="elem"){const n=7+stu("storb"),R=70*stArea(),cx=s.tx,cy=s.ty;
+  for(let i=0;i<n;i++){const a=Math.random()*6.283,r=Math.sqrt(Math.random())*125*stArea(),el=ELS[(s.elI++)%4];STO.push({t:"orb",x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,sx:player.x,sy:player.y-20,d:.38+i*.03,d0:.38+i*.03,R,el,dm:pow*3.4})}sfx("orb")}
+ else{const R=150*stArea()*(1+stu("stgrav")*.12);STO.push({t:"sing",x:s.tx,y:s.ty,life:1,max:1,R,dm:pow*13*(1+stu("stgrav")*.25)});sfx("hole")}
 }
 function stCastSec(){
  const s=player.st,lv=stu("stsec");if(!lv)return;
@@ -270,7 +270,7 @@ function updateStella(dt){
  if(stu("stsec")&&s.route==="cosmos"){s.sp2T-=dt;if(s.sp2T<=0){s.sp2T=3;stCastSec()}}
  // 보조 마법(원소 폭풍): 주위를 도는 원소 구슬 4개
  if(stu("stsec")&&s.route==="elem"){s.sp2T-=dt;if(s.sp2T<=0){s.sp2T=.3;const lv=stu("stsec"),pw=curW;curW="st_storm";
-  for(let i=0;i<4;i++){const a=elapsed*2.4+i*1.5708,x=player.x+Math.cos(a)*110,y=player.y+Math.sin(a)*110;areaHit(x,y,34*stArea(),stBase()*(.5+.15*lv),ELC[ELS[i]],ELS[i],stBase())}curW=pw}}
+  for(let i=0;i<4;i++){const a=elapsed*2.4+i*1.5708,x=player.x+Math.cos(a)*110,y=player.y+Math.sin(a)*110;areaHit(x,y,38*stArea(),stBase()*(.9+.2*lv),ELC[ELS[i]],ELS[i],stBase())}curW=pw}}
  // 궁극마법 진행
  if(s.act){const A=s.act;A.t-=dt;
   if(A.k==="bigbang"&&A.t<=0){const pw=curW;curW="ul_bigbang";for(const e of enemies){if(e.hp<=0||e.phased||!onScr(e.x,e.y,60))continue;const L=dist(e,player)||1;hitE(e,stBase()*40,"#ffe8c0","boom",(e.x-player.x)/L,(e.y-player.y)/L);if(e.type!=="boss")push(e,(e.x-player.x)/L,(e.y-player.y)/L,700)}curW=pw;
@@ -287,10 +287,10 @@ function updateStelObjs(dt){
  for(let i=STO.length-1;i>=0;i--){const o=STO[i];
   if(o.t==="orb"){o.d-=dt;if(o.d<=0){const pw=curW;curW="st_orb";areaHit(o.x,o.y,o.R,o.dm,ELC[o.el],o.el,o.dm);curW=pw;
     if(impBudget>0){impBudget--;vfx({type:"ring",x:o.x,y:o.y,r0:6,r1:o.R,life:.28,max:.28,c:ELC[o.el],w:4})}STO.splice(i,1)}continue}
-  if(o.t==="sing"){o.life-=dt;for(const e of query(o.x,o.y,o.R*1.6,QD)){if(e.hp<=0||e.phased)continue;const dx=o.x-e.x,dy=o.y-e.y,L=Math.hypot(dx,dy)||1;if(L>o.R*1.6)continue;const f=Math.min(L,(e.type==="boss"?40:e.elite?110:260)*(1+stu("stgrav")*.25)*dt);e.x+=dx/L*f;e.y+=dy/L*f}
+  if(o.t==="sing"){o.life-=dt;for(const e of query(o.x,o.y,o.R*1.6,QD)){if(e.hp<=0||e.phased)continue;const dx=o.x-e.x,dy=o.y-e.y,L=Math.hypot(dx,dy)||1;if(L>o.R*1.6)continue;const f=Math.min(L,(e.type==="boss"?40:e.elite?110:260)*(1+stu("stgrav")*.25)*dt);e.x+=dx/L*f;e.y+=dy/L*f;e.bhT=.3}
    if(o.life<=0){const pw=curW;curW="st_sing";for(const e of query(o.x,o.y,o.R,QD)){if(e.hp<=0||e.phased||d2(e,o)>(o.R+e.r)**2)continue;hitE(e,o.dm,"#c8a8ff","orb",0,0);e.markT=Math.max(e.markT,4)}curW=pw;
     vfx({type:"ring",x:o.x,y:o.y,r0:o.R,r1:8,life:.25,max:.25,c:"rgba(200,170,255,.95)",w:6});vfx({type:"ring",x:o.x,y:o.y,r0:8,r1:o.R*1.1,life:.35,max:.35,c:"rgba(255,240,255,.9)",w:4});shake=Math.max(shake,4);sfx("boom");STO.splice(i,1)}continue}
-  if(o.t==="bh"){o.life-=dt;o.tk-=dt;for(const e of query(o.x,o.y,o.R,QD)){if(e.hp<=0||e.phased)continue;const dx=o.x-e.x,dy=o.y-e.y,L=Math.hypot(dx,dy)||1;if(L>o.R)continue;const f=Math.min(L,(e.type==="boss"?60:420)*dt);e.x+=dx/L*f;e.y+=dy/L*f}
+  if(o.t==="bh"){o.life-=dt;o.tk-=dt;for(const e of query(o.x,o.y,o.R,QD)){if(e.hp<=0||e.phased)continue;const dx=o.x-e.x,dy=o.y-e.y,L=Math.hypot(dx,dy)||1;if(L>o.R)continue;const f=Math.min(L,(e.type==="boss"?60:420)*dt);e.x+=dx/L*f;e.y+=dy/L*f;e.bhT=.3}
    if(o.tk<=0){o.tk=.25;const pw=curW;curW="ul_blackhole";for(const e of query(o.x,o.y,200,QD))if(e.hp>0&&!e.phased&&d2(e,o)<40000)dmgTo(e,o.dm*3);curW=pw}
    if(o.life<=0){const pw=curW;curW="ul_blackhole";areaHit(o.x,o.y,260*stArea(),o.dm*30,"#e8d8ff");curW=pw;vfx({type:"ring",x:o.x,y:o.y,r0:10,r1:300,life:.5,max:.5,c:"rgba(230,210,255,.95)",w:12});shake=Math.max(shake,14);sfx("bomb");STO.splice(i,1)}continue}
   if(o.t==="storm"){o.life-=dt;if(mouse.used&&!TOUCH){o.x+=(mWX()-o.x)*Math.min(1,dt*3);o.y+=(mWY()-o.y)*Math.min(1,dt*3)}else{const n=nearest(600);if(n){o.x+=(n.x-o.x)*Math.min(1,dt*2);o.y+=(n.y-o.y)*Math.min(1,dt*2)}}
