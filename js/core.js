@@ -152,7 +152,7 @@ function reset(){
  const c=CH[selCh];
  weapons={};for(const k in defs)weapons[k]={...defs[k],cool:Math.random()*.3};
  passives={};for(const k in passiveDefs)passives[k]={...passiveDefs[k]};
- Object.assign(player,{x:0,y:0,r:16,speed:225*(1+c.sp),maxHp:100+c.hp+pl("hp")*10,aim:0,flash:0,face:1,moving:false,
+ Object.assign(player,{x:0,y:0,r:16,speed:225*(1+c.sp),maxHp:120+c.hp+pl("hp")*10,aim:0,flash:0,face:1,moving:false,
   sh:0,shT:2,dashT:0,dashCD:0,dvx:0,dvy:0,critT:0,trailT:0,healCap:0,rage:0,rageT:0,auraT:1,rolls:0,walk:0,mvs:0,atk:0,atkCD:0,invT:0,reviveQ:false,tal:{},talT:{},
   tokens:Math.min(4,Math.floor(pl("reroll")/5)),revives:pl("revive")>=20?2:pl("revive")>=10?1:0});player.hp=player.maxHp;
  for(const a of[enemies,shots,gems,effects,drops,xs,chestQueue,decals])a.length=0;
@@ -188,6 +188,7 @@ function autoQ(raw){
 }
 function loop(now){
  const raw=Math.min(.05,(now-last)/1000);last=now;
+ if(ADV.on){const t0=performance.now();advFrame(raw);dMs+=((performance.now()-t0)-dMs)*.1;uMs=0;fpsAcc+=raw;fpsN++;if(fpsAcc>=.5){fps=fpsN/fpsAcc;fpsAcc=0;fpsN=0}requestAnimationFrame(loop);return}   // 모험 모드: 별도 루프
  hitStopCD=Math.max(0,hitStopCD-raw);
  if(pendingWin>0&&!paused){pendingWin-=raw;if(pendingWin<=0&&running)victory()}
  if(slowT>0)slowT-=raw;else timeScale+=(1-timeScale)*Math.min(1,raw*3);

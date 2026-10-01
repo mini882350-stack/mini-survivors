@@ -368,6 +368,10 @@ function drawItem(L,t,atk){
    ctx.fillStyle=hVG(-30,-18,"#f2eef8","#9a96a8");ctx.beginPath();ctx.moveTo(0,-23);ctx.quadraticCurveTo(-8,-31,-19,-24);ctx.quadraticCurveTo(-10,-26,-1,-19.5);ctx.closePath();ctx.fill();hOut(1.2);
    ctx.strokeStyle="#c8102e";ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(-2,-22);ctx.quadraticCurveTo(-9,-27,-17,-24.4);ctx.stroke();
    hDot(0,-23,1.6,"#c8102e",true);if(atk>.1){ctx.globalAlpha=atk*.7;hGlow(-8,-24,10,"rgba(255,40,80,.7)");ctx.globalAlpha=1}break}
+  case"dagger":{ // 모험 모드 도적: 짧은 단검
+   ctx.fillStyle="#2a2030";ctx.fillRect(-1.3,-1,2.6,5);ctx.fillStyle=L.trim;ctx.fillRect(-3.4,-2.4,6.8,1.8);
+   ctx.fillStyle=hHG(-1.6,1.6,"#ffffff","#9aa4bc");ctx.beginPath();ctx.moveTo(-1.6,-2.4);ctx.lineTo(0,-13.5);ctx.lineTo(1.6,-2.4);ctx.closePath();ctx.fill();hOut(1);
+   if(atk>.1){ctx.globalAlpha=atk*.7;hGlow(0,-8,9,"rgba(255,120,140,.7)");ctx.globalAlpha=1}break}
   case"axe":{shaft(10,-17,"#5a3a22",2.6);
    ctx.fillStyle=hHG(-11,11,"#9aa0aa","#f0f2f6");
    for(const s of[-1,1]){ctx.beginPath();ctx.moveTo(0,-18.6);ctx.quadraticCurveTo(s*11,-22,s*10.6,-12);ctx.quadraticCurveTo(s*6,-14,0,-12.6);ctx.closePath();ctx.fill();hOut(1.2)}

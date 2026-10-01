@@ -406,6 +406,7 @@ function showTitle(){
  if(slot<0){
   p.innerHTML=`<h2>⚔️ MINI SURVIVORS</h2><div class="sub">저장 슬롯을 선택하세요</div><div class="choices">${[0,1,2].map(i=>{const s=mem[i];
    return `<div class="choice t-new" data-a="slot" data-k="${i}"><div class="icon">💾</div><b>슬롯 ${i+1}</b><p>${s?`💰 ${s.gold} · 클리어 ${s.cl?s.cl.reduce((a,b)=>a+b,0):s.clears||0}회<br>최고 생존 ${fmt(s.best||0)} · ∞ ${fmt(s.bestInf||0)}`:"비어 있음 — 새로 시작"}</p></div>`}).join("")}</div>
+   <div class="advcard" data-a="adv"><b>🗡️ 모험 모드 <span>BETA</span></b><p>전사 · 궁수 · 마법사 · 도적으로 직접 싸우며 마을과 사냥터를 오가는 RPG 핵앤슬래시 — 장비·스킬 파밍, 레벨업과 능력치 성장</p></div>
    <div style="text-align:center"><button class="ghost" data-a="code">💾 저장 코드로 불러오기</button> <button class="ghost" data-a="notes">📜 패치 노트</button> <button class="ghost" data-a="set">⚙ 설정</button></div>`;
   return;
  }
@@ -424,12 +425,13 @@ function showTitle(){
   return `<div class="pk${mx?" max":save.gold<c?" poor":""}" data-a="pk" data-k="${k}" title="${P.d}"><div class="pkh"><span class="ic">${P.i}</span><b>${P.n}</b><small>Lv.${lv}</small></div>
    <div class="pbar"><i style="width:${lv/PK_MAX*100}%"></i></div><p>${P.d}</p><div class="pkf"><span>현재 ${lv?P.v(lv):"-"}</span><em>${mx?"MAX":"💰 "+c}</em></div></div>`}).join("")}</div>
  <button class="go" data-a="go">▶ 출발</button>
+ <div class="advcard" data-a="adv"><b>🗡️ 모험 모드 <span>BETA</span></b><p>전사 · 궁수 · 마법사 · 도적으로 직접 싸우며 마을과 사냥터를 오가는 RPG 핵앤슬래시 — 장비·스킬 파밍, 레벨업과 능력치 성장</p></div>
  <div style="text-align:center"><button class="ghost" data-a="back">슬롯 변경</button> <button class="ghost" data-a="code">💾 저장 코드</button> <button class="ghost" data-a="dex">📖 도감 · 조합표</button> <button class="ghost" data-a="notes">📜 패치 노트</button> <button class="ghost" data-a="set">⚙ 설정</button></div>`;
 }
 $("title").addEventListener("click",e=>{
  const t=e.target.closest("[data-a]");if(!t)return;const a=t.dataset.a,k=t.dataset.k;sfx("ui");
  if(a==="slot")pickSlot(+k);else if(a==="ch")pickCh(k);else if(a==="st")pickSt(+k);else if(a==="pk")buyPk(k);else if(a==="mode"){mode=+k;showTitle()}
- else if(a==="go")startRun();else if(a==="back")backSlots();else if(a==="set")openPause(true,"set");else if(a==="code")openCode();else if(a==="notes")showNotes();else if(a==="dex")openPause(true,"codex");
+ else if(a==="go")startRun();else if(a==="back")backSlots();else if(a==="set")openPause(true,"set");else if(a==="code")openCode();else if(a==="adv")advEnter();else if(a==="notes")showNotes();else if(a==="dex")openPause(true,"codex");
 });
 $("restart").onclick=showTitle;
 /* 재시작: 같은 직업 · 스테이지 · 모드로 바로 새 판 (일시정지에서 누르면 지금 판은 포기 처리 후 골드 지급) */
@@ -480,8 +482,17 @@ $("codeov").addEventListener("click",async e=>{
 });
 
 /* ── 패치 노트: 새 버전으로 처음 접속했을 때 1회 팝업 (타이틀의 📜 버튼으로 다시 보기) ── */
-const GAME_VER="7.9.3";
+const GAME_VER="8.0.0";
 const NOTES=[
+ {v:"8.0.0",t:"모험 모드 BETA · 전 직업 상향",items:[
+  "🗡️ 새 모드: 모험 모드 (BETA) — 타이틀의 '모험 모드' 카드로 입장. 서바이버와 완전히 다른 RPG + 핵앤슬래시",
+  "⚔️ 새 직업 4종: 전사(근접 베기) · 궁수(화살) · 마법사(마력 탄) · 도적(빠른 단검·치명타) — 직업마다 스킬 6개",
+  "🏘️ 새벽 마을: 촌장(퀘스트 9개) · 상인(물약·장비 구매/판매) · 대장장이(장비 강화 +10) · 현자(스킬 습득·강화)",
+  "🌲 사냥터 3곳: 초록 들판 → 고블린 야영지 → 불타는 협곡 · 고블린·투석병·늑대·주술사·홉고블린·코볼트·늑대 기수·오우거·트롤 + 보스 3종",
+  "🎁 파밍: 일반~전설 5등급 장비 7부위 · 무작위 추가 능력치 · 정예 몬스터 · 스킬서 드롭 · 전투력 비교",
+  "📈 성장: 레벨업마다 능력치 포인트 5 (힘·민첩·지능·체력) · 최대 Lv.30 · 3개 캐릭터 슬롯, 자동 저장",
+  "💪 서바이버 전 직업 상향: 주는 피해 +25% · 받는 피해 -15% · 기본 최대 HP 100→120",
+  "🏹 레인저 구르기 재사용 2.5→1.9초 (특전 1.5→1.2초)"]},
  {v:"7.9.3",t:"스텔라 밸런스",items:[
   "🌟 스텔라 마법 피해 전반 상향: 기본 피해 26→50 · 레벨당 +8% 성장 · 별빛 탄 시전 간격 0.34→0.28초",
   "🌈 원소 루트: 원소 산탄 주기 1.2→0.95초 · 구슬 5→7개 · 피해 110→340% · 더 모여서 떨어짐 · 원소 반응 피해 +50% · 원소 폭풍 강화",

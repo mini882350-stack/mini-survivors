@@ -27,12 +27,13 @@ function devBtn(){let b=$("devbtn");if(!DEV.on){if(b)b.remove();return}
 function devToggle(){
  let p=$("devov");if(!p){p=document.createElement("div");p.id="devov";document.body.appendChild(p);p.addEventListener("click",devClick)}
  DEV.open=!DEV.open;
- if(DEV.open){DEV.wasPaused=paused;if(running)paused=true;devRender();p.style.display="block"}
- else{p.style.display="none";if(running&&!DEV.wasPaused&&!["levelup","chest","pause","gameover"].some(id=>$(id).style.display==="flex")){paused=false;last=performance.now()}}
+ if(DEV.open){DEV.wasPaused=paused;if(running)paused=true;if(typeof ADV!=="undefined"&&ADV.on&&ADV.play)ADV.paused=true;devRender();p.style.display="block"}
+ else{p.style.display="none";if(typeof ADV!=="undefined"&&ADV.on&&ADV.play&&!ADV.panel)ADV.paused=false;if(running&&!DEV.wasPaused&&!["levelup","chest","pause","gameover"].some(id=>$(id).style.display==="flex")){paused=false;last=performance.now()}}
 }
 const devB=(a,t,on)=>`<button data-dv="${a}"${on?' class="on"':""}>${t}</button>`;
 function devRender(){
  const p=$("devov");if(!p)return;const inRun=running;
+ if(typeof ADV!=="undefined"&&ADV.on){p.innerHTML=`<div class="dvh">🛠 개발자 — 모험 모드 <button data-dv="close">✕</button></div><div class="dvs">전투</div><div class="dvg">${devB("god",(DEV.god?"✅":"⬜")+" 무적",DEV.god)}${devB("dmg",(DEV.dmg>1?"✅":"⬜")+" 피해 ×10",DEV.dmg>1)}${devB("a_heal","❤️ HP·MP 회복")}${devB("a_kill","☠️ 몬스터 전부 처치")}${devB("a_cd","⏱️ 쿨다운 초기화")}${devB("a_boss","👑 보스 소환")}</div><div class="dvs">성장</div><div class="dvg">${devB("a_lv1","⬆️ 레벨 +1")}${devB("a_lv5","⏫ 레벨 +5")}${devB("a_gold","💰 골드 +100,000")}${devB("a_leg","🟧 전설 장비 3개")}${devB("a_sk","✨ 모든 스킬 Lv.5")}${devB("a_map","🗺️ 모든 지역 개방")}${devB("a_pot","🧪 물약 +20")}</div><div class="dvn">${ADV.play?`${ADV.c.name} · Lv.${ADV.c.lv} · ${AMAP[ADV.map].n} · 몬스터 ${ADV.mons.length}`:"캐릭터를 먼저 고르세요"}</div>`;return}
  p.innerHTML=`<div class="dvh">🛠 개발자 테스트 모드 <button data-dv="close">✕</button></div>
  <div class="dvs">전투</div><div class="dvg">
   ${devB("god",(DEV.god?"✅":"⬜")+" 무적",DEV.god)}${devB("dmg",(DEV.dmg>1?"✅":"⬜")+" 피해 ×10",DEV.dmg>1)}${devB("nospawn",(DEV.nospawn?"✅":"⬜")+" 적 생성 끔",DEV.nospawn)}
@@ -50,6 +51,15 @@ function devClick(e){
  const run=running,need_=()=>{if(!run){toast("게임 중에만 쓸 수 있어요");return false}return true};
  switch(a){
   case"close":devToggle();return;
+  case"a_heal":case"a_kill":case"a_cd":case"a_boss":case"a_lv1":case"a_lv5":case"a_gold":case"a_leg":case"a_sk":case"a_map":case"a_pot":{
+   if(!ADV.play){toast("캐릭터를 먼저 고르세요");break}const c=ADV.c;
+   if(a==="a_heal"){ADV.p.hp=ADV.st.maxHp;ADV.p.mp=ADV.st.maxMp}else if(a==="a_kill"){for(const m of ADV.mons.slice())if(!m.dead)advKill(m)}else if(a==="a_cd"){ADV.cd={}}
+   else if(a==="a_boss"){if(AMAP[ADV.map].town)toast("사냥터에서만 가능");else if(!ADV.boss){ADV.bossT[ADV.map]=0;advSpawnBoss()}}
+   else if(a==="a_lv1"||a==="a_lv5"){for(let i=0;i<(a==="a_lv5"?5:1);i++)advGainXP(aNeed(c.lv)-c.xp)}else if(a==="a_gold")c.gold+=1e5;
+   else if(a==="a_leg"){for(let i=0;i<3&&c.bag.length<AMAX_BAG;i++)c.bag.push(advItem(c.lv+2,{rar:4}));toast("🟧 가방에 전설 장비 지급")}
+   else if(a==="a_sk"){for(const id of askOf(c.job))c.sk[id]=ASK_MAXLV;toast("✨ 모든 스킬 Lv.5 — K 창에서 슬롯 등록")}else if(a==="a_map"){for(const k of AMAP_ORDER)if(AMAP[k].req)c.boss[AMAP[k].req]=Math.max(1,c.boss[AMAP[k].req]||0);toast("🗺️ 모든 지역 개방")}
+   else if(a==="a_pot"){c.pot.hp+=20;c.pot.mp+=20}
+   advCalc();ADV.dirty=true;break}
   case"god":DEV.god=!DEV.god;break;
   case"dmg":DEV.dmg=DEV.dmg>1?1:10;break;
   case"nospawn":DEV.nospawn=!DEV.nospawn;break;

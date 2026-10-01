@@ -7,11 +7,12 @@ const pl=k=>save&&save.perks?save.perks[k]||0:0;
 const chr=()=>CH[selCh]||{};
 const isJob=k=>selCh===k;
 const T=k=>player.tal&&player.tal[k]?1:0;   // 직업 특전 보유 여부
-const dmgMul=()=>DEV.dmg*(1+passives.might.level*.15+pl("dmg")*.04)*(isJob("vamp")&&player.hp<player.maxHp*(T("v_low")?.7:.5)?(T("v_low")?1.5:1.3):1)*(1+player.rage*.012);
+const BUFF_D=1.25,BUFF_A=.85;                                    // v8.0 전체 직업 상향: 피해 +25% · 받는 피해 -15%
+const dmgMul=()=>DEV.dmg*BUFF_D*(1+passives.might.level*.15+pl("dmg")*.04)*(isJob("vamp")&&player.hp<player.maxHp*(T("v_low")?.7:.5)?(T("v_low")?1.5:1.3):1)*(1+player.rage*.012);
 const rateMul=()=>Math.max(.4,1-passives.haste.level*.12)*(1-player.rage*.008)*(1-pl("cd")*.015)*(T("m_cd")?.85:1)*(T("p_spd")&&player.moving?.85:1);   // 광전사: 분노당 공격속도 +0.8%
 const speed=()=>player.speed*(1+passives.boots.level*.12)*(1+pl("spd")*.02)*(1+.15*(T("r_spd")+T("p_spd")))*(player.slow||1);   // slow: 독 늪 / 포자 구름
 const pickupRange=()=>125*(1+passives.magnet.level*.25)*(1+pl("magnet")*.04);
-const armorMul=()=>Math.max(.3,1-passives.armor.level*.08-(weapons.aegis&&weapons.aegis.level>0?.15:0))*(isJob("berserker")?(T("b_arm")?.9:1.1):1)*(T("k_aura")?.85:1)*(T("c_arm")?.85:1)*(1-pl("armor")*.015)*(1-passives.thorns.level*.03);
+const armorMul=()=>BUFF_A*Math.max(.3,1-passives.armor.level*.08-(weapons.aegis&&weapons.aegis.level>0?.15:0))*(isJob("berserker")?(T("b_arm")?.9:1.1):1)*(T("k_aura")?.85:1)*(T("c_arm")?.85:1)*(1-pl("armor")*.015)*(1-passives.thorns.level*.03);
 const critC=()=>CRIT_C+passives.eye.level*.05+(player.critT>0?.4:0)+(isJob("gambler")?.1:0)+T("g_crit")*.15+(player.sw?(player.sw.u.scrit||0)*.06:0)+(player.st?(player.st.u.stcrit||0)*.05:0)+pl("crit")*.006;   // 레인저: 구른 뒤 +40%
 const critM=()=>CRIT_M+passives.eye.level*.15+(player.sw?(player.sw.u.scrit||0)*.2:0)+(player.st?(player.st.u.stcrit||0)*.15:0)+T("g_crit")*.3+(player.critT>0&&T("r_crit")?.5:0)+(player.gun?(player.gun.u.ghol||0)*.25:0);
 const statusPot=()=>(1+passives.amp.level*.2)*(T("m_amp")?1.4:1)*(1+((player.st&&player.st.u.stamp)||0)*.15);                   // 상태이상 피해·지속 배율
@@ -87,7 +88,7 @@ function tryDash(){
  if(isJob("stella")){stTele();return}
  if(!isJob("ranger")||!running||paused||player.dashCD>0)return;
  const a=player.moving?player.aim:(player.face>0?0:Math.PI);
- player.dashT=.22;player.dashCD=T("r_cd")?1.5:2.5;player.critT=T("r_crit")?4:2.2;player.dvx=Math.cos(a);player.dvy=Math.sin(a);
+ player.dashT=.22;player.dashCD=T("r_cd")?1.2:1.9;player.critT=T("r_crit")?4:2.2;player.dvx=Math.cos(a);player.dvy=Math.sin(a);
  if(T("r_knife")){const dm=(14+level*2.2)*dmgMul(),pw=curW;curW="trait";for(let i=0;i<12;i++){const b=i/12*6.2832;addShot({x:player.x,y:player.y,vx:Math.cos(b)*620,vy:Math.sin(b)*620,r:6,life:.55,damage:dm,kind:"knife",pierce:1})}curW=pw}
  sfx("dash_p");vfx({type:"ring",x:player.x,y:player.y,r0:8,r1:44,life:.25,max:.25,c:"rgba(170,255,170,.8)",w:3});
 }

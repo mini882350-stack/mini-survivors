@@ -319,9 +319,10 @@ function playDrive(sg,i,t,bar,s,ch){
  if(bossOn&&s%8===0)mv(mtof(ch[0]-23),t,STEP*8,"sawtooth",.01,.2,500,.3);
 }
 setInterval(()=>{
- if(!running||paused||muted||!AC||AC.state!=="running"){seqT=0;return}
- bossOn=false;for(let i=0;i<enemies.length;i++)if(enemies[i].type==="boss"){bossOn=true;break}
- const target=Math.min(1,enemies.length/260+(bossOn?.35:0)+elapsed/1200);inten+=(target-inten)*.03;
+ const adv=typeof ADV!=="undefined"&&ADV.on;
+ if(!(adv?!ADV.paused||!ADV.play:running&&!paused)||muted||!AC||AC.state!=="running"){seqT=0;return}
+ bossOn=false;if(adv)bossOn=!!(ADV.boss&&ADV.boss.st==="chase");else for(let i=0;i<enemies.length;i++)if(enemies[i].type==="boss"){bossOn=true;break}
+ const target=adv?ADV.inten*.8:Math.min(1,enemies.length/260+(bossOn?.35:0)+elapsed/1200);inten+=(target-inten)*.03;
  if(elapsed>=songEnd&&S.bgm!=="stage")songPend=true;                         // 2분 30초마다 다른 곡으로 (4마디 경계에서 전환)
  const now=AC.currentTime;if(seqT<now)seqT=now+.05;
  try{while(seqT<now+.32){                                                    // 0.32초 앞까지 미리 예약 → 프레임이 잠깐 끊겨도 음악은 계속
